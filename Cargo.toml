@@ -1,0 +1,8 @@
+[package]
+
+name = "reactive"
+version = "0.0.1"
+authors = [ "Keaton Brandt <keaton.brandt@gmail.com>" ]
+
+[lib]
+name = "reactive"
