@@ -6,3 +6,14 @@ authors = [ "Keaton Brandt <keaton.brandt@gmail.com>" ]
 
 [lib]
 name = "reactive"
+
+[workspace]
+members = [
+    "reactive_macros",
+    "reactive_streams",
+]
+
+[dependencies]
+reactive_macros = {path = './reactive_macros'}
+reactive_streams = {path = './reactive_streams'}
+proc-macro-hack = "0.5"
