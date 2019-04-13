@@ -8,7 +8,6 @@ pub use reactive_streams::ReactiveValue;
 pub use reactive_streams::Stream;
 pub use reactive_streams::StreamHost;
 pub use reactive_streams::Subscription;
-pub use reactive_streams::BaseStream;
 
 /// Add one to an expression.
 #[proc_macro_hack]

@@ -16,7 +16,7 @@ impl MyButton {
         }
     }
 
-    pub fn get_clicks(&self) -> reactive::BaseStream<MouseButton> {
+    pub fn get_clicks(&self) -> reactive::Stream<MouseButton> {
         self.click_host.get_stream()
     }
 
