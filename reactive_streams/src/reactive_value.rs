@@ -3,11 +3,11 @@ use std::default::Default;
 use std::rc::Rc;
 use std::sync::{Arc, RwLock};
 
-struct ReactiveValueImpl<T, ExtraFieldsType> {
+struct ReactiveValueImpl<T> {
     value: Box<RwLock<Rc<T>>>,
 
     #[allow(dead_code)]
-    subscription: Subscription<T, ExtraFieldsType>,
+    subscription: Subscription<T>,
 }
 
 /// Holds the latest value emitted by a stream.
@@ -36,11 +36,11 @@ struct ReactiveValueImpl<T, ExtraFieldsType> {
 /// stream_host.emit(100);
 /// assert_eq!(*reactive_value.get(), 10000);
 /// ```
-pub struct ReactiveValue<T, ExtraFieldsType> {
-    pointer: Arc<ReactiveValueImpl<T, ExtraFieldsType>>,
+pub struct ReactiveValue<T> {
+    pointer: Arc<ReactiveValueImpl<T>>,
 }
 
-impl<T, ExtraFieldsType> Clone for ReactiveValue<T, ExtraFieldsType> {
+impl<T> Clone for ReactiveValue<T> {
     fn clone(&self) -> Self {
         ReactiveValue {
             pointer: Arc::clone(&self.pointer),
@@ -48,25 +48,19 @@ impl<T, ExtraFieldsType> Clone for ReactiveValue<T, ExtraFieldsType> {
     }
 }
 
-impl<T: 'static, ExtraFieldsType: 'static> ReactiveValue<T, ExtraFieldsType> {
-    pub fn from_stream(stream: Stream<T, ExtraFieldsType>) -> ReactiveValue<T, ExtraFieldsType>
+impl<T: 'static> ReactiveValue<T> {
+    pub fn from_stream(stream: Stream<T>) -> ReactiveValue<T>
     where
         T: Default,
     {
         ReactiveValue::from_stream_with_default(stream, Default::default())
     }
 
-    pub fn from_stream_with_default(
-        stream: Stream<T, ExtraFieldsType>,
-        default: T,
-    ) -> ReactiveValue<T, ExtraFieldsType> {
+    pub fn from_stream_with_default(stream: Stream<T>, default: T) -> ReactiveValue<T> {
         ReactiveValue::from_stream_with_default_rc(stream, Rc::new(default))
     }
 
-    pub fn from_stream_with_default_rc(
-        stream: Stream<T, ExtraFieldsType>,
-        default: Rc<T>,
-    ) -> ReactiveValue<T, ExtraFieldsType> {
+    pub fn from_stream_with_default_rc(stream: Stream<T>, default: Rc<T>) -> ReactiveValue<T> {
         let original_value = Box::new(RwLock::new(default));
         let val_ptr = Box::into_raw(original_value);
         unsafe {
@@ -92,22 +86,19 @@ impl<T: 'static, ExtraFieldsType: 'static> ReactiveValue<T, ExtraFieldsType> {
     }
 }
 
-impl<T: 'static, ExtraFieldsType: 'static> Stream<T, ExtraFieldsType> {
-    pub fn to_reactive_value(self) -> ReactiveValue<T, ExtraFieldsType>
+impl<T: 'static> Stream<T> {
+    pub fn to_reactive_value(self) -> ReactiveValue<T>
     where
         T: Default,
     {
         ReactiveValue::from_stream(self)
     }
 
-    pub fn to_reactive_value_with_default(self, default: T) -> ReactiveValue<T, ExtraFieldsType> {
+    pub fn to_reactive_value_with_default(self, default: T) -> ReactiveValue<T> {
         ReactiveValue::from_stream_with_default(self, default)
     }
 
-    pub fn to_reactive_value_with_default_rc(
-        self,
-        default: Rc<T>,
-    ) -> ReactiveValue<T, ExtraFieldsType> {
+    pub fn to_reactive_value_with_default_rc(self, default: Rc<T>) -> ReactiveValue<T> {
         ReactiveValue::from_stream_with_default_rc(self, default)
     }
 }

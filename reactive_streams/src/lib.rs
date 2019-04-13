@@ -7,4 +7,3 @@ pub use reactive_value::ReactiveValue;
 pub use streams::Stream;
 pub use streams::StreamHost;
 pub use streams::Subscription;
-pub use streams::BaseStream;

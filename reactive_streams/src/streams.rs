@@ -1,3 +1,4 @@
+use std::any::Any;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::Mutex;
@@ -5,29 +6,27 @@ use std::sync::Mutex;
 /// Used to indicate that a stream has no extra fields, which are used to create derived streams.
 pub struct EmptyStruct {}
 
-pub(crate) struct StreamImpl<T, ExtraFieldsType> {
+pub(crate) struct StreamImpl<T> {
     highest_id: u16,
     is_alive: bool,
     on_emit: HashMap<u16, Box<Fn(Rc<T>)>>,
-    pub(crate) extra_fields: Box<ExtraFieldsType>,
+    pub(crate) extra_fields: *mut (dyn Any + 'static),
 }
 
-pub struct Stream<T, ExtraFieldsType> {
-    pub(crate) pointer: Rc<Mutex<StreamImpl<T, ExtraFieldsType>>>,
+pub struct Stream<T> {
+    pub(crate) pointer: Rc<Mutex<StreamImpl<T>>>,
 }
 
-pub type BaseStream<T> = Stream<T, EmptyStruct>;
-
-pub struct Subscription<T, ExtraFieldsType> {
+pub struct Subscription<T> {
     id: u16,
-    stream: Stream<T, ExtraFieldsType>,
+    stream: Stream<T>,
 }
 
 pub struct StreamHost<T> {
-    stream: Stream<T, EmptyStruct>,
+    stream: Stream<T>,
 }
 
-impl<T, U> Clone for Stream<T, U> {
+impl<T> Clone for Stream<T> {
     fn clone(&self) -> Self {
         Stream {
             pointer: Rc::clone(&self.pointer),
@@ -35,7 +34,7 @@ impl<T, U> Clone for Stream<T, U> {
     }
 }
 
-impl<T, ExtraFieldsType> StreamImpl<T, ExtraFieldsType> {
+impl<T> StreamImpl<T> {
     fn subscribe<F>(&mut self, listener: F) -> u16
     where
         F: Fn(Rc<T>),
@@ -85,8 +84,8 @@ impl<T, ExtraFieldsType> StreamImpl<T, ExtraFieldsType> {
 /// stream_host.emit(100);
 /// assert_eq!(*last_value.lock().unwrap(), 100);
 /// ```
-impl<T, ExtraFieldsType> Stream<T, ExtraFieldsType> {
-    pub fn subscribe<F>(&self, listener: F) -> Subscription<T, ExtraFieldsType>
+impl<T> Stream<T> {
+    pub fn subscribe<F>(&self, listener: F) -> Subscription<T>
     where
         F: Fn(Rc<T>),
         F: 'static,
@@ -102,7 +101,7 @@ impl<T, ExtraFieldsType> Stream<T, ExtraFieldsType> {
         }
     }
 
-    pub fn unsubscribe(&self, _subscription: Subscription<T, ExtraFieldsType>) {
+    pub fn unsubscribe(&self, _subscription: Subscription<T>) {
         // By moving the subscription into this function it will automatically get dropped,
         // thereby calling the internal unsubscribe_by_id function.
     }
@@ -125,13 +124,16 @@ impl<T, ExtraFieldsType> Stream<T, ExtraFieldsType> {
 
     // PRIVATE FUNCTIONS
 
-    pub(crate) fn new_with_fields(fields: ExtraFieldsType) -> Stream<T, ExtraFieldsType> {
+    pub(crate) fn new_with_fields<FieldsType>(fields: FieldsType) -> Stream<T>
+    where
+        FieldsType: 'static,
+    {
         Stream {
             pointer: Rc::new(Mutex::new(StreamImpl {
                 highest_id: 0_u16,
                 is_alive: true,
                 on_emit: HashMap::new(),
-                extra_fields: Box::new(fields),
+                extra_fields: Box::into_raw(Box::new(fields)),
             })),
         }
     }
@@ -139,6 +141,48 @@ impl<T, ExtraFieldsType> Stream<T, ExtraFieldsType> {
     pub(crate) fn emit_rc(&self, value: Rc<T>) {
         match self.pointer.lock() {
             Ok(stream_impl) => stream_impl.emit_rc(value),
+            Err(err) => panic!("Stream mutex poisoned: {}", err),
+        }
+    }
+
+    pub(crate) fn read_extra_fields<ExtraFieldsType, RetType, FnType>(&self, cb: FnType) -> RetType
+    where
+        ExtraFieldsType: 'static,
+        RetType: 'static,
+        FnType: FnOnce(&ExtraFieldsType) -> RetType,
+    {
+        match self.pointer.lock() {
+            Ok(stream_impl) => unsafe {
+                let any_box = Box::from_raw(stream_impl.extra_fields);
+                match any_box.downcast::<ExtraFieldsType>() {
+                    Ok(fields) => {
+                        let ret = cb(&*fields);
+                        let _nofree = Box::into_raw(fields);
+                        ret
+                    }
+                    Err(_) => panic!("Invalid type for derived stream field."),
+                }
+            },
+            Err(err) => panic!("Stream mutex poisoned: {}", err),
+        }
+    }
+
+    pub(crate) fn mutate_extra_fields<ExtraFieldsType, FnType>(&self, cb: FnType)
+    where
+        ExtraFieldsType: 'static,
+        FnType: FnOnce(&mut ExtraFieldsType),
+    {
+        match self.pointer.lock() {
+            Ok(stream_impl) => unsafe {
+                let any_box = Box::from_raw(stream_impl.extra_fields);
+                match any_box.downcast::<ExtraFieldsType>() {
+                    Ok(mut fields) => {
+                        cb(&mut *fields);
+                        let _nofree = Box::into_raw(fields);
+                    }
+                    Err(_) => panic!("Invalid type for derived stream field."),
+                }
+            },
             Err(err) => panic!("Stream mutex poisoned: {}", err),
         }
     }
@@ -151,7 +195,7 @@ impl<T> StreamHost<T> {
         }
     }
 
-    pub fn get_stream(&self) -> BaseStream<T> {
+    pub fn get_stream(&self) -> Stream<T> {
         self.stream.clone()
     }
 
@@ -174,7 +218,15 @@ impl<T> Drop for StreamHost<T> {
     }
 }
 
-impl<T, U> Drop for Subscription<T, U> {
+impl<T> Drop for StreamImpl<T> {
+    fn drop(&mut self) {
+        unsafe {
+            let _extra_fields_box = Box::from_raw(self.extra_fields);
+        }
+    }
+}
+
+impl<T> Drop for Subscription<T> {
     fn drop(&mut self) {
         self.stream.unsubscribe_by_id(self.id)
     }

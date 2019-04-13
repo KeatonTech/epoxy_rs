@@ -1,14 +1,14 @@
 use super::{Stream, Subscription};
 use std::rc::Rc;
 
-pub struct StatefulDerivedStreamFields<T, StateType, ExtraFieldsType> {
+pub struct StatefulDerivedStreamFields<T, StateType> {
     state: StateType,
 
     #[allow(dead_code)]
-    subscription: Option<Subscription<T, ExtraFieldsType>>,
+    subscription: Option<Subscription<T>>,
 }
 
-impl<T: 'static, ExtraFieldsType: 'static> Stream<T, ExtraFieldsType> {
+impl<T: 'static> Stream<T> {
     /// Similar to the `reduce` method on iterators, but works iteratively and creates a stream
     /// that emits with the latest 'reduced' value whenever the original stream emits.
     ///
@@ -42,42 +42,40 @@ impl<T: 'static, ExtraFieldsType: 'static> Stream<T, ExtraFieldsType> {
     /// stream_host.emit(3);
     /// assert_eq!(*last_value.lock().unwrap(), vec![2, 3]);
     /// ```
-    pub fn scan<U, F>(
-        &self,
-        scan_fn: F,
-        initial_value: U,
-    ) -> Stream<U, StatefulDerivedStreamFields<T, Rc<U>, ExtraFieldsType>>
+    pub fn scan<U, F>(&self, scan_fn: F, initial_value: U) -> Stream<U>
     where
         F: Fn(&U, Rc<T>) -> U,
         F: 'static,
         U: 'static,
     {
-        let mut derived_stream = Stream::new_with_fields(StatefulDerivedStreamFields {
-            state: Rc::new(initial_value),
-            subscription: None,
-        });
+        let derived_stream = Stream::new_with_fields::<StatefulDerivedStreamFields<T, Rc<U>>>(
+            StatefulDerivedStreamFields {
+                state: Rc::new(initial_value),
+                subscription: None,
+            },
+        );
         let subscription_stream_ref = derived_stream.clone();
 
         let subscription = self.subscribe(move |val| {
-            let new_state = match subscription_stream_ref.pointer.lock() {
-                Ok(stream_impl) => Rc::new(scan_fn(&*stream_impl.extra_fields.state, val)),
-                Err(err) => panic!("Stream mutex poisoned: {}", err),
-            };
-            match subscription_stream_ref.pointer.lock() {
-                Ok(mut mut_ref) => {
-                    mut_ref.extra_fields.state = Rc::clone(&new_state);
-                }
-                Err(err) => panic!("Stream mutex poisoned: {}", err),
-            };
+            let new_state = subscription_stream_ref.read_extra_fields(
+                |fields: &StatefulDerivedStreamFields<T, Rc<U>>| {
+                    Rc::new(scan_fn(&fields.state, val))
+                },
+            );
+
+            subscription_stream_ref.mutate_extra_fields(
+                |fields: &mut StatefulDerivedStreamFields<T, Rc<U>>| {
+                    fields.state = Rc::clone(&new_state)
+                },
+            );
             subscription_stream_ref.emit_rc(new_state);
         });
 
-        match (&mut derived_stream).pointer.lock() {
-            Ok(mut mut_ref) => {
-                mut_ref.extra_fields.subscription = Some(subscription);
-            }
-            Err(err) => panic!("Stream mutex poisoned: {}", err),
-        };
+        derived_stream.mutate_extra_fields(
+            move |fields: &mut StatefulDerivedStreamFields<T, Rc<U>>| {
+                fields.subscription = Some(subscription);
+            },
+        );
 
         derived_stream
     }
@@ -105,9 +103,7 @@ impl<T: 'static, ExtraFieldsType: 'static> Stream<T, ExtraFieldsType> {
     /// stream_host.emit(3);
     /// assert_eq!(*last_value.lock().unwrap(), 2);
     /// ```
-    pub fn count_values(
-        &self,
-    ) -> Stream<u32, StatefulDerivedStreamFields<T, Rc<u32>, ExtraFieldsType>> {
+    pub fn count_values(&self) -> Stream<u32> {
         self.scan(|acc, _| acc + 1, 0)
     }
 
@@ -137,10 +133,7 @@ impl<T: 'static, ExtraFieldsType: 'static> Stream<T, ExtraFieldsType> {
     /// stream_host.emit(4);
     /// assert_eq!(*last_value.lock().unwrap(), vec![3, 4]);
     /// ```
-    pub fn buffer(
-        &self,
-        max_buffer_size: usize,
-    ) -> Stream<Vec<T>, StatefulDerivedStreamFields<T, Rc<Vec<T>>, ExtraFieldsType>>
+    pub fn buffer(&self, max_buffer_size: usize) -> Stream<Vec<T>>
     where
         T: Clone,
     {

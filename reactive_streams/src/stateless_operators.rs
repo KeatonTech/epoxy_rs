@@ -1,34 +1,30 @@
 use super::{Stream, Subscription};
 use std::rc::Rc;
 
-pub struct DerivedStreamFields<T, ExtraFieldsType> {
+pub struct DerivedStreamFields<T> {
     #[allow(dead_code)]
-    subscription: Option<Subscription<T, ExtraFieldsType>>,
+    subscription: Option<Subscription<T>>,
 }
 
-impl<T: 'static, ExtraFieldsType: 'static> Stream<T, ExtraFieldsType> {
-    fn create_derived_stream<U, F>(
-        &self,
-        subscription_re_emit: F,
-    ) -> Stream<U, DerivedStreamFields<T, ExtraFieldsType>>
+impl<T: 'static> Stream<T> {
+    fn create_derived_stream<U, F>(&self, subscription_re_emit: F) -> Stream<U>
     where
-        F: Fn(&Stream<U, DerivedStreamFields<T, ExtraFieldsType>>, Rc<T>),
+        F: Fn(&Stream<U>, Rc<T>),
         F: 'static,
         U: 'static,
     {
-        let mut derived_stream =
-            Stream::new_with_fields(DerivedStreamFields { subscription: None });
+        let derived_stream =
+            Stream::new_with_fields::<DerivedStreamFields<T>>(DerivedStreamFields {
+                subscription: None,
+            });
         let subscription_stream_ref = derived_stream.clone();
 
         let subscription =
             self.subscribe(move |val| subscription_re_emit(&subscription_stream_ref, val));
 
-        match (&mut derived_stream).pointer.lock() {
-            Ok(mut mut_ref) => {
-                mut_ref.extra_fields.subscription = Some(subscription);
-            }
-            Err(err) => panic!("Stream mutex poisoned: {}", err),
-        };
+        derived_stream.mutate_extra_fields(move |fields: &mut DerivedStreamFields<T>| {
+            fields.subscription = Some(subscription);
+        });
 
         derived_stream
     }
@@ -61,10 +57,7 @@ impl<T: 'static, ExtraFieldsType: 'static> Stream<T, ExtraFieldsType> {
     /// stream_host.emit(4);
     /// assert_eq!(*last_value.lock().unwrap(), 4);
     /// ```
-    pub fn filter<F>(
-        &self,
-        filter_function: F,
-    ) -> Stream<T, DerivedStreamFields<T, ExtraFieldsType>>
+    pub fn filter<F>(&self, filter_function: F) -> Stream<T>
     where
         F: Fn(&T) -> bool,
         F: 'static,
@@ -101,7 +94,7 @@ impl<T: 'static, ExtraFieldsType: 'static> Stream<T, ExtraFieldsType> {
     /// stream_host.emit(3);
     /// assert_eq!(*last_value.lock().unwrap(), 300);
     /// ```
-    pub fn map<U, F>(&self, map_function: F) -> Stream<U, DerivedStreamFields<T, ExtraFieldsType>>
+    pub fn map<U, F>(&self, map_function: F) -> Stream<U>
     where
         U: 'static,
         F: Fn(&T) -> U,
@@ -137,10 +130,7 @@ impl<T: 'static, ExtraFieldsType: 'static> Stream<T, ExtraFieldsType> {
     /// stream_host.emit(3);
     /// assert_eq!(*last_value.lock().unwrap(), 5); /* Emitted 3, 4, then 5 */
     /// ```
-    pub fn flat_map<U, F, C>(
-        &self,
-        iter_map_function: F,
-    ) -> Stream<U, DerivedStreamFields<T, ExtraFieldsType>>
+    pub fn flat_map<U, F, C>(&self, iter_map_function: F) -> Stream<U>
     where
         U: 'static,
         C: IntoIterator<Item = U>,
@@ -161,10 +151,7 @@ impl<T: 'static, ExtraFieldsType: 'static> Stream<T, ExtraFieldsType> {
     /// Similar to subscribing to a stream in that `inspect_function` runs whenever the
     /// stream emits, but returns a derived stream matching the original stream instead of
     /// a SubscriptionRef.
-    pub fn inspect<F>(
-        &self,
-        inspect_function: F,
-    ) -> Stream<T, DerivedStreamFields<T, ExtraFieldsType>>
+    pub fn inspect<F>(&self, inspect_function: F) -> Stream<T>
     where
         F: Fn(&T),
         F: 'static,
