@@ -19,7 +19,7 @@ pub struct Stream<T> {
 
 pub struct Subscription<T> {
     id: u16,
-    stream: Stream<T>,
+    pub(crate) stream: Stream<T>,
 }
 
 pub struct StreamHost<T> {
