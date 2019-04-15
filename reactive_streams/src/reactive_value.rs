@@ -1,22 +1,21 @@
-use super::{Stream, Subscription, StreamHost};
+use super::{Stream, StreamHost, Subscription};
 use std::default::Default;
 use std::rc::Rc;
 use std::sync::{Arc, RwLock};
 
 /// Trait that applies to both readonly and writeable reactive values.
 pub trait ReactiveValue<T> {
-
     /// Returns the current value of the ReactiveValue.
     fn get(&self) -> Rc<T>;
 
     /// Returns a Stream that represents the changing value over time.
     /// Use this function to subscribe to changes in the ReactiveValue.ReadonlyReactiveValue
-    /// 
+    ///
     /// # Examples
     /// ```
     /// use std::sync::{Arc, Mutex};
     /// use reactive_streams::ReactiveValue;
-    /// 
+    ///
     /// let value = ReactiveValue::new(4);
     ///
     /// let last_value = Arc::new(Mutex::new(0_i32));
@@ -34,7 +33,6 @@ pub trait ReactiveValue<T> {
     /// ```
     fn as_stream(&self) -> Stream<T>;
 }
-
 
 // HEAP-SPACE IMPLEMENTATIONS
 
@@ -85,7 +83,7 @@ impl<T> ReactiveValue<T> for WriteableReactiveValueImpl<T> {
 ///
 /// ```
 /// use reactive_streams::ReactiveValue;
-/// 
+///
 /// let stream_host: reactive_streams::StreamHost<i32> = reactive_streams::StreamHost::new();
 /// let stream = stream_host.get_stream();
 /// let reactive_value = stream.map(|val| val * 100).to_reactive_value();
@@ -98,7 +96,7 @@ impl<T> ReactiveValue<T> for WriteableReactiveValueImpl<T> {
 ///
 /// ```
 /// use reactive_streams::ReactiveValue;
-/// 
+///
 /// let stream_host: reactive_streams::StreamHost<i32> = reactive_streams::StreamHost::new();
 /// let stream = stream_host.get_stream();
 /// let reactive_value = stream.map(|val| val * 100).to_reactive_value_with_default(1000);
@@ -128,16 +126,15 @@ impl<T> Clone for ReadonlyReactiveValue<T> {
     }
 }
 
-
 /// Reactive value that is explicitly set, rather than being derived from a stream.
 ///
 /// # Examples
 /// ```
 /// use reactive_streams::ReactiveValue;
-/// 
+///
 /// let writeable_value = ReactiveValue::new(5);
 /// assert_eq!(*writeable_value.get(), 5);
-/// 
+///
 /// writeable_value.set(50);
 /// assert_eq!(*writeable_value.get(), 50);
 /// ```
@@ -165,7 +162,7 @@ impl<T> Clone for WriteableReactiveValue<T> {
 
 impl<T: 'static> WriteableReactiveValue<T> {
     /// Sets the value of the ReactiveValue, using a mutex to ensure thread safety.
-    /// 
+    ///
     /// Note: use `set_rc` if your new value is already an Rc, as this will prevent the
     /// value from being unnecessarily copied.
     pub fn set(&self, value: T) {
@@ -183,26 +180,26 @@ impl<T: 'static> WriteableReactiveValue<T> {
     /// This is helpful when exposing ReactiveValues to public APIs, so that
     /// the consumer cannot alter the state of your component.
     pub fn as_readonly(&self) -> ReadonlyReactiveValue<T> {
-        self.as_stream().to_reactive_value_with_default_rc(self.get())
+        self.as_stream()
+            .to_reactive_value_with_default_rc(self.get())
     }
 }
-
 
 // CONSTRUCTORS
 
 impl<T: 'static> ReactiveValue<T> {
     /// Creates a new writeable reactive value.
-    /// 
+    ///
     /// Note: Use `new_rc` if your default value is already an Rc, as this will
     /// prevent another pointer from being created unnecessarily.
     ///
     /// # Examples
     /// ```
     /// use reactive_streams::ReactiveValue;
-    /// 
+    ///
     /// let writeable_value = ReactiveValue::new(5);
     /// assert_eq!(*writeable_value.get(), 5);
-    /// 
+    ///
     /// writeable_value.set(50);
     /// assert_eq!(*writeable_value.get(), 50);
     /// ```
@@ -216,7 +213,7 @@ impl<T: 'static> ReactiveValue<T> {
             pointer: Arc::new(WriteableReactiveValueImpl {
                 value: Box::new(RwLock::new(initial_value)),
                 host: StreamHost::new(),
-            })
+            }),
         }
     }
 
@@ -231,7 +228,10 @@ impl<T: 'static> ReactiveValue<T> {
         ReactiveValue::from_stream_with_default_rc(stream, Rc::new(default))
     }
 
-    pub fn from_stream_with_default_rc(stream: Stream<T>, default: Rc<T>) -> ReadonlyReactiveValue<T> {
+    pub fn from_stream_with_default_rc(
+        stream: Stream<T>,
+        default: Rc<T>,
+    ) -> ReadonlyReactiveValue<T> {
         let original_value = Box::new(RwLock::new(default));
         let val_ptr = Box::into_raw(original_value);
         unsafe {
@@ -253,20 +253,20 @@ impl<T: 'static> ReactiveValue<T> {
 impl<T: 'static> Stream<T> {
     /// Creates a ReactiveValue from the stream, using the empty state value for type T as the
     /// default.
-    /// 
+    ///
     /// Use `to_reactive_value_with_default` or `to_reactive_value_with_default_rc` if you want
     /// a more reasonable default value, or if your type T does not implement `Default`.
-    /// 
+    ///
     /// # Examples
     /// ```
     /// use reactive_streams::ReactiveValue;
-    /// 
+    ///
     /// let stream_host: reactive_streams::StreamHost<i32> = reactive_streams::StreamHost::new();
     /// let stream = stream_host.get_stream();
-    /// 
+    ///
     /// let reactive_value = stream.map(|val| val * 100).to_reactive_value();
     /// assert_eq!(*reactive_value.get(), 0);
-    /// 
+    ///
     /// stream_host.emit(100);
     /// assert_eq!(*reactive_value.get(), 10000);
     /// ```

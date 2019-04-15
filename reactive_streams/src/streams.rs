@@ -46,7 +46,7 @@ impl<T> StreamImpl<T> {
         new_subscription_id
     }
 
-    fn emit_rc(&self, value: Rc<T>) {
+    pub(crate) fn emit_rc(&self, value: Rc<T>) {
         for (_id, call) in &self.on_emit {
             call(value.clone())
         }
