@@ -6,11 +6,13 @@ This library is similar to the Rx family of libraries, but simpler and designed 
 ## Example
 
 ```rust
-let player_1_points = reactive::ReactiveValue::new(4);
-let player_1_multiplier = reactive::ReactiveValue::new(1.0_f32);
+use reactive::ReactiveValue;
 
-let player_2_points = reactive::ReactiveValue::new(5);
-let player_2_multiplier = reactive::ReactiveValue::new(1.0_f32);
+let player_1_points = ReactiveValue::new(4);
+let player_1_multiplier = ReactiveValue::new(1.0_f32);
+
+let player_2_points = ReactiveValue::new(5);
+let player_2_multiplier = ReactiveValue::new(1.0_f32);
 
 let player_1_score = computed!(*player_1_points as f32 * player_1_multiplier);
 let player_2_score = computed!(*player_2_points as f32 * player_2_multiplier);
