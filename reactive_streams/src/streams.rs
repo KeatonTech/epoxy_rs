@@ -1,5 +1,5 @@
 use std::any::Any;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::rc::Rc;
 use std::sync::Mutex;
 
@@ -9,7 +9,7 @@ pub struct EmptyStruct {}
 pub(crate) struct StreamImpl<T> {
     highest_id: u16,
     is_alive: bool,
-    on_emit: HashMap<u16, Box<Fn(Rc<T>)>>,
+    on_emit: BTreeMap<u16, Box<Fn(Rc<T>)>>,
     pub(crate) extra_fields: *mut (dyn Any + 'static),
 }
 
@@ -132,7 +132,7 @@ impl<T> Stream<T> {
             pointer: Rc::new(Mutex::new(StreamImpl {
                 highest_id: 0_u16,
                 is_alive: true,
-                on_emit: HashMap::new(),
+                on_emit: BTreeMap::new(),
                 extra_fields: Box::into_raw(Box::new(fields)),
             })),
         }

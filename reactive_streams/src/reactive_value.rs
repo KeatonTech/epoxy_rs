@@ -171,8 +171,10 @@ impl<T: 'static> WriteableReactiveValue<T> {
 
     /// Sets the value of the ReactiveValue, using a mutex to ensure thread safety.
     pub fn set_rc(&self, value: Rc<T>) {
-        let mut val_mut = self.pointer.value.write().unwrap();
-        *val_mut = value.clone();
+        {
+            let mut val_mut = self.pointer.value.write().unwrap();
+            *val_mut = value.clone();
+        }
         self.pointer.host.emit_rc(value)
     }
 

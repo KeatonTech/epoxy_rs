@@ -11,7 +11,7 @@ pub struct CombinedStreamFields<T> {
 /// # Examples
 /// ```
 /// use reactive_streams::ReactiveValue;
-/// 
+///
 /// let stream_host_1: reactive_streams::StreamHost<i32> = reactive_streams::StreamHost::new();
 /// let stream_1 = stream_host_1.get_stream();
 ///
