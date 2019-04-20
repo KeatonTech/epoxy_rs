@@ -1,4 +1,5 @@
 mod reactive_value;
+mod reactive_value_operators;
 mod stateful_operators;
 mod stateless_operators;
 mod stream_combinators;

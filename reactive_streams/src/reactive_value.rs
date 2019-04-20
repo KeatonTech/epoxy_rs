@@ -34,7 +34,7 @@ pub trait ReactiveValue<T> {
     fn as_stream(&self) -> Stream<T>;
 }
 
-// HEAP-SPACE IMPLEMENTATIONS
+// IMPLEMENTATIONS
 
 struct ReadonlyReactiveValueImpl<T> {
     value: Box<RwLock<Rc<T>>>,

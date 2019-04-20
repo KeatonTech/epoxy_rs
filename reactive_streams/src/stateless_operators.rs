@@ -105,6 +105,48 @@ impl<T: 'static> Stream<T> {
         })
     }
 
+    /// Returns a stream containing modified values from the original stream.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::{Arc, Mutex};
+    /// use std::rc::Rc;
+    ///
+    /// let stream_host: reactive_streams::StreamHost<i32> = reactive_streams::StreamHost::new();
+    /// let stream = stream_host.get_stream();
+    ///
+    /// let last_value = Arc::new(Mutex::new(0_i32));
+    /// let last_value_write = last_value.clone();
+    /// 
+    /// let fallback_value = Rc::new(10);
+    ///
+    /// let subscription = stream
+    ///     .map_rc(move |val| if (*val < 0) { fallback_value.clone() } else { val })
+    ///     .subscribe(move |val| {
+    ///          *last_value_write.lock().unwrap() = *val;
+    ///     });
+    ///
+    /// stream_host.emit(-2);
+    /// assert_eq!(*last_value.lock().unwrap(), 10);
+    ///
+    /// stream_host.emit(12);
+    /// assert_eq!(*last_value.lock().unwrap(), 12);
+    /// 
+    /// stream_host.emit(-10);
+    /// assert_eq!(*last_value.lock().unwrap(), 10);
+    /// ```
+    pub fn map_rc<U, F>(&self, map_function: F) -> Stream<U>
+    where
+        U: 'static,
+        F: Fn(Rc<T>) -> Rc<U>,
+        F: 'static,
+    {
+        self.create_derived_stream(move |host, val| {
+            host.emit_rc(map_function(val));
+        })
+    }
+
     /// Returns a stream that can emit multiple values for each value from the original stream.
     ///
     /// # Examples
