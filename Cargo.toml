@@ -1,8 +1,13 @@
 [package]
 
 name = "reactive"
-version = "0.0.1"
+version = "0.3.0"
 authors = [ "Keaton Brandt <keaton.brandt@gmail.com>" ]
+repository = "https://github.com/KeatonTech/rust_reactive"
+readme = "./README.md"
+keywords = [ "Reactive", "FRP", "Stream", "Observable", "Rx" ]
+categories = [ "asynchronous", ]
+license = "MIT"
 
 [lib]
 name = "reactive"
@@ -14,6 +19,6 @@ members = [
 ]
 
 [dependencies]
-reactive_macros = {path = './reactive_macros'}
-reactive_streams = {path = './reactive_streams'}
+reactive_macros = {path = './reactive_macros', version = '0.3.0'}
+reactive_streams = {path = './reactive_streams', version = '0.3.0'}
 proc-macro-hack = "0.5"
