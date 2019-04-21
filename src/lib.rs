@@ -1,5 +1,5 @@
-//! # Reactive Streams for Rust.
-//! ### Reactive Programming the Rust way
+//! # Epoxy
+//! ### The Reactive Glue for Frontend Rust Apps
 //! 
 //! This library provides 2 basic reactive programming primitives. `Stream` represents a stateless
 //! pipe of data that can be subscribed to and handled asynchronously. `ReactiveValue` represents
@@ -64,7 +64,13 @@
 //! assert_eq!(*score.get(), 8);
 //! ```
 //! 
-//! ## Comparison to Rx
+//! ## Comparisons to other FRP Libraries
+//! 
+//! ### Carboxyl / Frappe
+//! 
+//! 
+//! 
+//! ### ReactiveX
 //! 
 //! These streams are intended to be substantially simpler than those in the Rx family of
 //! libraries. The most significant difference is that this library has no concept of a 'cold'
