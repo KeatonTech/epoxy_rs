@@ -1,6 +1,6 @@
 [package]
 
-name = "epoxy"
+name = "epoxy_frp"
 description = "The Reactive Glue for Frontend Applications"
 version = "0.3.0"
 authors = [ "Keaton Brandt <keaton.brandt@gmail.com>" ]

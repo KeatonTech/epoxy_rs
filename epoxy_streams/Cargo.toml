@@ -5,4 +5,4 @@ authors = ["keatonbrandt <keaton.brandt@gmail.com>"]
 edition = "2018"
 license = "MIT"
 
-description = "Base streams implementation for the `epoxy` library. Please use epoxy instead."
+description = "Base streams implementation for the `epoxy_frp` library. Please use epoxy_frp instead."
