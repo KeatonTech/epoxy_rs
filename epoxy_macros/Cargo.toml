@@ -1,6 +1,5 @@
 [package]
 name = "epoxy_macros"
-description = "The Reactive Glue for Frontend Applications"
 version = "0.3.0"
 authors = ["Keaton Brandt <keaton.brandt@gmail.com>"]
 edition = "2018"
