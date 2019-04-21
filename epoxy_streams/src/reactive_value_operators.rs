@@ -11,7 +11,7 @@ impl<T: 'static> ReactiveValue<T> {
     ///
     /// # Examples
     /// ```
-    /// use reactive_streams::ReactiveValue;
+    /// use epoxy_streams::ReactiveValue;
     /// 
     /// let original = ReactiveValue::new(1_i32);
     /// let only_even = ReactiveValue::sanitize(&original, |val| val % 2 == 0, 0);
@@ -45,7 +45,7 @@ impl<T: 'static> ReactiveValue<T> {
     ///
     /// # Examples
     /// ```
-    /// use reactive_streams::ReactiveValue;
+    /// use epoxy_streams::ReactiveValue;
     /// 
     /// let original = ReactiveValue::new(1_i32);
     /// let only_even = ReactiveValue::sanitize(&original, |val| val % 2 == 0, 0);
@@ -83,7 +83,7 @@ impl<T: 'static> ReactiveValue<T> {
     /// # Examples
     ///
     /// ```
-    /// use reactive_streams::ReactiveValue;
+    /// use epoxy_streams::ReactiveValue;
     /// 
     /// let original = ReactiveValue::new("Bread");
     /// let thing_that_is_cool = ReactiveValue::map(&original, |str| {

@@ -10,5 +10,5 @@ pub use reactive_value::ReadonlyReactiveValue;
 pub use reactive_value::WriteableReactiveValue;
 pub use stream_combinators::merge;
 pub use streams::Stream;
-pub use streams::StreamHost;
+pub use streams::Sink;
 pub use streams::Subscription;

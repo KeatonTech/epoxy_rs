@@ -1,5 +1,0 @@
-[package]
-name = "reactive_streams"
-version = "0.3.0"
-authors = ["keatonbrandt <keaton.brandt@gmail.com>"]
-edition = "2018"

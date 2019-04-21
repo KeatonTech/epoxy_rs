@@ -19,7 +19,7 @@ impl<T: 'static> Stream<T> {
     /// ```
     /// use std::sync::{Arc, Mutex};
     ///
-    /// let stream_host: reactive_streams::StreamHost<i32> = reactive_streams::StreamHost::new();
+    /// let stream_host: epoxy_streams::Sink<i32> = epoxy_streams::Sink::new();
     /// let stream = stream_host.get_stream();
     ///
     /// let last_value = Arc::new(Mutex::new(vec![]));
@@ -87,7 +87,7 @@ impl<T: 'static> Stream<T> {
     /// ```
     /// use std::sync::{Arc, Mutex};
     ///
-    /// let stream_host: reactive_streams::StreamHost<i32> = reactive_streams::StreamHost::new();
+    /// let stream_host: epoxy_streams::Sink<i32> = epoxy_streams::Sink::new();
     /// let stream = stream_host.get_stream();
     ///
     /// let last_value = Arc::new(Mutex::new(0_u32));
@@ -114,7 +114,7 @@ impl<T: 'static> Stream<T> {
     /// ```
     /// use std::sync::{Arc, Mutex};
     ///
-    /// let stream_host: reactive_streams::StreamHost<i32> = reactive_streams::StreamHost::new();
+    /// let stream_host: epoxy_streams::Sink<i32> = epoxy_streams::Sink::new();
     /// let stream = stream_host.get_stream();
     ///
     /// let last_value = Arc::new(Mutex::new(vec![]));

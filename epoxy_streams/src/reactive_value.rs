@@ -1,4 +1,4 @@
-use super::{Stream, StreamHost, Subscription};
+use super::{Stream, Sink, Subscription};
 use std::default::Default;
 use std::rc::Rc;
 use std::sync::{Arc, RwLock};
@@ -14,7 +14,7 @@ pub trait ReactiveValue<T> {
     /// # Examples
     /// ```
     /// use std::sync::{Arc, Mutex};
-    /// use reactive_streams::ReactiveValue;
+    /// use epoxy_streams::ReactiveValue;
     ///
     /// let value = ReactiveValue::new(4);
     ///
@@ -58,7 +58,7 @@ impl<T> ReactiveValue<T> for ReadonlyReactiveValueImpl<T> {
 
 struct WriteableReactiveValueImpl<T> {
     value: Box<RwLock<Rc<T>>>,
-    host: StreamHost<T>,
+    host: Sink<T>,
 }
 
 impl<T> ReactiveValue<T> for WriteableReactiveValueImpl<T> {
@@ -82,9 +82,9 @@ impl<T> ReactiveValue<T> for WriteableReactiveValueImpl<T> {
 /// # Examples
 ///
 /// ```
-/// use reactive_streams::ReactiveValue;
+/// use epoxy_streams::ReactiveValue;
 ///
-/// let stream_host: reactive_streams::StreamHost<i32> = reactive_streams::StreamHost::new();
+/// let stream_host: epoxy_streams::Sink<i32> = epoxy_streams::Sink::new();
 /// let stream = stream_host.get_stream();
 /// let reactive_value = stream.map(|val| val * 100).to_reactive_value();
 /// assert_eq!(*reactive_value.get(), 0);
@@ -95,9 +95,9 @@ impl<T> ReactiveValue<T> for WriteableReactiveValueImpl<T> {
 /// ```
 ///
 /// ```
-/// use reactive_streams::ReactiveValue;
+/// use epoxy_streams::ReactiveValue;
 ///
-/// let stream_host: reactive_streams::StreamHost<i32> = reactive_streams::StreamHost::new();
+/// let stream_host: epoxy_streams::Sink<i32> = epoxy_streams::Sink::new();
 /// let stream = stream_host.get_stream();
 /// let reactive_value = stream.map(|val| val * 100).to_reactive_value_with_default(1000);
 /// assert_eq!(*reactive_value.get(), 1000);
@@ -130,7 +130,7 @@ impl<T> Clone for ReadonlyReactiveValue<T> {
 ///
 /// # Examples
 /// ```
-/// use reactive_streams::ReactiveValue;
+/// use epoxy_streams::ReactiveValue;
 ///
 /// let writeable_value = ReactiveValue::new(5);
 /// assert_eq!(*writeable_value.get(), 5);
@@ -197,7 +197,7 @@ impl<T: 'static> ReactiveValue<T> {
     ///
     /// # Examples
     /// ```
-    /// use reactive_streams::ReactiveValue;
+    /// use epoxy_streams::ReactiveValue;
     ///
     /// let writeable_value = ReactiveValue::new(5);
     /// assert_eq!(*writeable_value.get(), 5);
@@ -214,7 +214,7 @@ impl<T: 'static> ReactiveValue<T> {
         WriteableReactiveValue {
             pointer: Arc::new(WriteableReactiveValueImpl {
                 value: Box::new(RwLock::new(initial_value)),
-                host: StreamHost::new(),
+                host: Sink::new(),
             }),
         }
     }
@@ -261,9 +261,9 @@ impl<T: 'static> Stream<T> {
     ///
     /// # Examples
     /// ```
-    /// use reactive_streams::ReactiveValue;
+    /// use epoxy_streams::ReactiveValue;
     ///
-    /// let stream_host: reactive_streams::StreamHost<i32> = reactive_streams::StreamHost::new();
+    /// let stream_host: epoxy_streams::Sink<i32> = epoxy_streams::Sink::new();
     /// let stream = stream_host.get_stream();
     ///
     /// let reactive_value = stream.map(|val| val * 100).to_reactive_value();

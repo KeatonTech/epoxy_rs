@@ -1,14 +1,14 @@
 #[macro_use]
-extern crate reactive;
+extern crate epoxy;
 
-use reactive::ReactiveValue;
+use epoxy::ReactiveValue;
 
 fn main() {
-    let player_1_points = reactive::ReactiveValue::new(4);
-    let player_1_multiplier = reactive::ReactiveValue::new(1.0_f32);
+    let player_1_points = epoxy::ReactiveValue::new(4);
+    let player_1_multiplier = epoxy::ReactiveValue::new(1.0_f32);
 
-    let player_2_points = reactive::ReactiveValue::new(5);
-    let player_2_multiplier = reactive::ReactiveValue::new(1.0_f32);
+    let player_2_points = epoxy::ReactiveValue::new(5);
+    let player_2_multiplier = epoxy::ReactiveValue::new(1.0_f32);
 
     let player_1_score = computed!(*player_1_points as f32 * player_1_multiplier);
     let player_2_score = computed!(*player_2_points as f32 * player_2_multiplier);

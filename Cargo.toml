@@ -1,6 +1,6 @@
 [package]
 
-name = "reactive"
+name = "epoxy"
 version = "0.3.0"
 authors = [ "Keaton Brandt <keaton.brandt@gmail.com>" ]
 repository = "https://github.com/KeatonTech/rust_reactive"
@@ -10,15 +10,15 @@ categories = [ "asynchronous", ]
 license = "MIT"
 
 [lib]
-name = "reactive"
+name = "epoxy"
 
 [workspace]
 members = [
-    "reactive_macros",
-    "reactive_streams",
+    "epoxy_macros",
+    "epoxy_streams",
 ]
 
 [dependencies]
-reactive_macros = {path = './reactive_macros', version = '0.3.0'}
-reactive_streams = {path = './reactive_streams', version = '0.3.0'}
+epoxy_macros = {path = './epoxy_macros', version = '0.3.0'}
+epoxy_streams = {path = './epoxy_streams', version = '0.3.0'}
 proc-macro-hack = "0.5"

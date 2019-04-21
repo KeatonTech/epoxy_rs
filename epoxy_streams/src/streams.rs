@@ -22,7 +22,7 @@ pub struct Subscription<T> {
     pub(crate) stream: Stream<T>,
 }
 
-pub struct StreamHost<T> {
+pub struct Sink<T> {
     stream: Stream<T>,
 }
 
@@ -56,7 +56,7 @@ impl<T> StreamImpl<T> {
 /// # Examples
 ///
 /// ```
-/// let stream_host: reactive_streams::StreamHost<i32> = reactive_streams::StreamHost::new();
+/// let stream_host: epoxy_streams::Sink<i32> = epoxy_streams::Sink::new();
 /// let stream = stream_host.get_stream();
 /// {
 ///     let _sub = stream.subscribe(|val| {val;});
@@ -68,7 +68,7 @@ impl<T> StreamImpl<T> {
 /// ```
 /// use std::sync::{Arc, Mutex};
 ///
-/// let stream_host: reactive_streams::StreamHost<i32> = reactive_streams::StreamHost::new();
+/// let stream_host: epoxy_streams::Sink<i32> = epoxy_streams::Sink::new();
 /// let stream = stream_host.get_stream();
 ///
 /// let last_value = Arc::new(Mutex::new(0_i32));
@@ -188,9 +188,9 @@ impl<T> Stream<T> {
     }
 }
 
-impl<T> StreamHost<T> {
-    pub fn new() -> StreamHost<T> {
-        StreamHost {
+impl<T> Sink<T> {
+    pub fn new() -> Sink<T> {
+        Sink {
             stream: Stream::new_with_fields(EmptyStruct {}),
         }
     }
@@ -208,7 +208,7 @@ impl<T> StreamHost<T> {
     }
 }
 
-impl<T> Drop for StreamHost<T> {
+impl<T> Drop for Sink<T> {
     fn drop(&mut self) {
         let mut stream_mut = match self.stream.pointer.lock() {
             Ok(mut_ref) => mut_ref,

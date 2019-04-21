@@ -12,7 +12,7 @@ subscription object stays in scope, preventing a many of the memory leaks and zo
 problems common in reactive code.
 
 ```
-let stream_host: reactive::StreamHost<i32> = reactive::StreamHost::new();
+let stream_host: epoxy::Sink<i32> = epoxy::Sink::new();
 let stream = stream_host.get_stream();
 {
     let _sub = stream.subscribe(|val| println!("Emitted {}", val));
@@ -52,10 +52,10 @@ just as easy as dealing with any other Rust variable.
 
 ```
 # #[macro_use] extern crate reactive;
-use reactive::ReactiveValue;
+use epoxy::ReactiveValue;
 
-let points = reactive::ReactiveValue::new(4);
-let multiplier = reactive::ReactiveValue::new(1);
+let points = epoxy::ReactiveValue::new(4);
+let multiplier = epoxy::ReactiveValue::new(1);
 let score = computed!(points * multiplier);
 
 assert_eq!(*score.get(), 4);

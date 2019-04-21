@@ -10,15 +10,15 @@ pub struct CombinedStreamFields<T> {
 ///
 /// # Examples
 /// ```
-/// use reactive_streams::ReactiveValue;
+/// use epoxy_streams::ReactiveValue;
 ///
-/// let stream_host_1: reactive_streams::StreamHost<i32> = reactive_streams::StreamHost::new();
+/// let stream_host_1: epoxy_streams::Sink<i32> = epoxy_streams::Sink::new();
 /// let stream_1 = stream_host_1.get_stream();
 ///
-/// let stream_host_2: reactive_streams::StreamHost<i32> = reactive_streams::StreamHost::new();
+/// let stream_host_2: epoxy_streams::Sink<i32> = epoxy_streams::Sink::new();
 /// let stream_2 = stream_host_2.get_stream();
 ///
-/// let merged = reactive_streams::merge(vec![stream_1, stream_2]);
+/// let merged = epoxy_streams::merge(vec![stream_1, stream_2]);
 /// let merged_value = merged.clone().to_reactive_value();
 /// let emit_count = merged.count_values().to_reactive_value();
 ///

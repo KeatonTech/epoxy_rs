@@ -12,7 +12,7 @@
 //! problems common in reactive code.
 //! 
 //! ```
-//! let stream_host: reactive::StreamHost<i32> = reactive::StreamHost::new();
+//! let stream_host: epoxy::Sink<i32> = epoxy::Sink::new();
 //! let stream = stream_host.get_stream();
 //! {
 //!     let _sub = stream.subscribe(|val| println!("Emitted {}", val));
@@ -52,10 +52,10 @@
 //! 
 //! ```
 //! # #[macro_use] extern crate reactive;
-//! use reactive::ReactiveValue;
+//! use epoxy::ReactiveValue;
 //! 
-//! let points = reactive::ReactiveValue::new(4);
-//! let multiplier = reactive::ReactiveValue::new(1);
+//! let points = epoxy::ReactiveValue::new(4);
+//! let multiplier = epoxy::ReactiveValue::new(1);
 //! let score = computed!(points * multiplier);
 //! 
 //! assert_eq!(*score.get(), 4);
@@ -79,18 +79,18 @@
 //! 
 //! This crate is under active development and is probably not ready for production use yet.
 extern crate proc_macro_hack;
-extern crate reactive_macros;
-extern crate reactive_streams;
+extern crate epoxy_macros;
+extern crate epoxy_streams;
 
 use proc_macro_hack::proc_macro_hack;
 
-pub use reactive_streams::ReactiveValue;
-pub use reactive_streams::ReadonlyReactiveValue;
-pub use reactive_streams::Stream;
-pub use reactive_streams::StreamHost;
-pub use reactive_streams::Subscription;
-pub use reactive_streams::WriteableReactiveValue;
+pub use epoxy_streams::ReactiveValue;
+pub use epoxy_streams::ReadonlyReactiveValue;
+pub use epoxy_streams::Stream;
+pub use epoxy_streams::Sink;
+pub use epoxy_streams::Subscription;
+pub use epoxy_streams::WriteableReactiveValue;
 
 /// Add one to an expression.
 #[proc_macro_hack]
-pub use reactive_macros::computed;
+pub use epoxy_macros::computed;

@@ -6,7 +6,7 @@ extern crate lazy_static;
 extern crate syn;
 #[macro_use]
 extern crate quote;
-extern crate reactive_streams;
+extern crate epoxy_streams;
 
 use proc_macro_hack::proc_macro_hack;
 use std::collections::HashSet;
@@ -70,7 +70,7 @@ pub fn computed(block_stream: proc_macro::TokenStream) -> proc_macro::TokenStrea
                 #compute_fn_body
             };
 
-            reactive_streams::merge(vec![
+            epoxy_streams::merge(vec![
                 #(#value_tokens_5.as_stream().map(|_| ())),*
             ]).map(move |_| {
                 #(let #value_tokens_6 = &*#value_tokens_7.get();

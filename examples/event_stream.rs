@@ -6,17 +6,17 @@ enum MouseButton {
 }
 
 struct MyButton {
-    click_host: reactive::StreamHost<MouseButton>,
+    click_host: epoxy::Sink<MouseButton>,
 }
 
 impl MyButton {
     pub fn new() -> MyButton {
         MyButton {
-            click_host: reactive::StreamHost::new(),
+            click_host: epoxy::Sink::new(),
         }
     }
 
-    pub fn get_clicks(&self) -> reactive::Stream<MouseButton> {
+    pub fn get_clicks(&self) -> epoxy::Stream<MouseButton> {
         self.click_host.get_stream()
     }
 
