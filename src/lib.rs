@@ -68,11 +68,27 @@
 //! 
 //! ### Carboxyl / Frappe
 //! 
+//! Carboxyl and Frappe are the two most common FRP libraries in Rust right now (I have combined
+//! them here because they are structured very similarly). This library was inspired by ReactiveX
+//! rather than the FRP paper that Carboxyl and Frappe used, so some of the terminology here is
+//! different. There are also a number of significant API differences:
 //! 
+//! * Epoxy Subscription <-> Carboxyl Observers
+//!   * Subscriptions in Epoxy are unsubscribed when they go out of scope
+//!   * Carboxyl Observers are unsubscribed when the observer function returns False-y
+//! * Epoxy ReactiveValue <-> Carboxyl Signal
+//!   * Carboxyl Signals cannot be subscribed to (observed), which is a problem for UI frameworks
+//!   * Epoxy ReactiveValues are push, rather than pull, making them less efficient in some cases
+//! * Epoxy computed! <-> Carboxyl lift!
+//!   * The Epoxy computed! macro extracts variables from the function def, making it more readable
+//!   * Carboxyl's lift! macro has explicitly defined inputs, making it less error-prone
+//! 
+//! As you can see, there are tradeoffs to both of these frameworks. Epoxy was designed to optimize
+//! for frontend use cases, making it easier to integrate with things like DOM libraries.
 //! 
 //! ### ReactiveX
 //! 
-//! These streams are intended to be substantially simpler than those in the Rx family of
+//! These streams are intended to be substantially simpler than those in the ReactiveX family of
 //! libraries. The most significant difference is that this library has no concept of a 'cold'
 //! stream, meaning no streams will ever emit a value immediately upon subscription. Streams
 //! in this library also never close, as they are intended to model long-term asynchronous data

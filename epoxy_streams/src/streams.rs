@@ -13,46 +13,14 @@ pub(crate) struct StreamImpl<T> {
     pub(crate) extra_fields: *mut (dyn Any + 'static),
 }
 
-pub struct Stream<T> {
-    pub(crate) pointer: Rc<Mutex<StreamImpl<T>>>,
-}
 
-pub struct Subscription<T> {
-    id: u16,
-    pub(crate) stream: Stream<T>,
-}
-
-pub struct Sink<T> {
-    stream: Stream<T>,
-}
-
-impl<T> Clone for Stream<T> {
-    fn clone(&self) -> Self {
-        Stream {
-            pointer: Rc::clone(&self.pointer),
-        }
-    }
-}
-
-impl<T> StreamImpl<T> {
-    fn subscribe<F>(&mut self, listener: F) -> u16
-    where
-        F: Fn(Rc<T>),
-        F: 'static,
-    {
-        let new_subscription_id = self.highest_id;
-        self.highest_id += 1;
-        self.on_emit.insert(new_subscription_id, Box::new(listener));
-        new_subscription_id
-    }
-
-    pub(crate) fn emit_rc(&self, value: Rc<T>) {
-        for (_id, call) in &self.on_emit {
-            call(value.clone())
-        }
-    }
-}
-
+/// Streams are objects that emit events in sequence as they are created. Streams are
+/// similar to Iterators in Rust in that both represent a sequence of values and both
+/// can be modified by 'pipe' functions like `map` and `filter`. The difference is that
+/// all values of an iterator are known immediately (or, at least, execution will block
+/// while the next item is retrieved), whereas it would not be uncommon for a stream to
+/// live for the entire duration of a program, emitting new values from time-to-time.
+/// 
 /// # Examples
 ///
 /// ```
@@ -84,7 +52,91 @@ impl<T> StreamImpl<T> {
 /// stream_host.emit(100);
 /// assert_eq!(*last_value.lock().unwrap(), 100);
 /// ```
+pub struct Stream<T> {
+    pub(crate) pointer: Rc<Mutex<StreamImpl<T>>>,
+}
+
+/// A Subscription object ties a stream to a listener function such that the listener function is
+/// run whenever a new value is added to the stream. When the Subscription object is destroyed
+/// the listener function will stop getting called.
+/// 
+/// # Examples
+///
+/// ```
+/// let stream_host: epoxy_streams::Sink<i32> = epoxy_streams::Sink::new();
+/// let stream = stream_host.get_stream();
+/// {
+///     let _subscription = stream.subscribe(|val| {val;});
+///     assert_eq!(stream.count_subscribers(), 1);
+/// }
+/// assert_eq!(stream.count_subscribers(), 0);
+/// ```
+pub struct Subscription<T> {
+    id: u16,
+    pub(crate) stream: Stream<T>,
+}
+
+/// A Sink is an object used to create a Stream. If you have ever visited a kitchen or bathroom
+/// you have probably observed this phenomena already. In more technical terms, Sinks are the
+/// 'write' part of functional reactive programming, and Streams are the 'read' part.
+/// 
+/// # Examples
+/// ```
+/// use std::sync::{Arc, Mutex};
+///
+/// let stream_host: epoxy_streams::Sink<i32> = epoxy_streams::Sink::new();
+/// let stream = stream_host.get_stream();
+///
+/// let last_value = Arc::new(Mutex::new(0_i32));
+/// let last_value_write = last_value.clone();
+///
+/// let subscription = stream.subscribe(move |val| {
+///     *last_value_write.lock().unwrap() = *val;
+/// });
+///
+/// stream_host.emit(1);
+/// assert_eq!(*last_value.lock().unwrap(), 1);
+///
+/// stream_host.emit(100);
+/// assert_eq!(*last_value.lock().unwrap(), 100);
+/// ```
+pub struct Sink<T> {
+    stream: Stream<T>,
+}
+
+impl<T> Clone for Stream<T> {
+    fn clone(&self) -> Self {
+        Stream {
+            pointer: Rc::clone(&self.pointer),
+        }
+    }
+}
+
+impl<T> StreamImpl<T> {
+    fn subscribe<F>(&mut self, listener: F) -> u16
+    where
+        F: Fn(Rc<T>),
+        F: 'static,
+    {
+        let new_subscription_id = self.highest_id;
+        self.highest_id += 1;
+        self.on_emit.insert(new_subscription_id, Box::new(listener));
+        new_subscription_id
+    }
+
+    pub(crate) fn emit_rc(&self, value: Rc<T>) {
+        for (_id, call) in &self.on_emit {
+            call(value.clone())
+        }
+    }
+}
+
 impl<T> Stream<T> {
+    /// Subscribing to a stream will cause the given 'listener' function to be executed whenever
+    /// a new object is added to the stream. This listener function has a static lifetime because
+    /// it lives as long as the returned Subscription object, which means that in most cases if the
+    /// given function needs to capture any scope from its environment it will need to be used with
+    /// Rust's `move` annotation.
     pub fn subscribe<F>(&self, listener: F) -> Subscription<T>
     where
         F: Fn(Rc<T>),
@@ -101,11 +153,16 @@ impl<T> Stream<T> {
         }
     }
 
+    /// Usually subscriptions are removed by simply letting the Subscription object fall out of
+    /// scope, but this declarative API is provided as well as it may be more readable in some
+    /// situations.
     pub fn unsubscribe(&self, _subscription: Subscription<T>) {
         // By moving the subscription into this function it will automatically get dropped,
         // thereby calling the internal unsubscribe_by_id function.
     }
 
+    /// Returns the total number of subscribers listening to this stream, includes any derived
+    /// streams (ones created with a pipe operation like `map` or `filter`).
     pub fn count_subscribers(&self) -> usize {
         let stream = match self.pointer.lock() {
             Ok(stream_impl) => stream_impl,
@@ -195,14 +252,21 @@ impl<T> Sink<T> {
         }
     }
 
+    /// Returns the Stream that emits values from this Sink. Usually the Stream will be exposed as
+    /// a public API while the Sink will be kept private, however there are certainly exceptions
+    /// to this pattern.
     pub fn get_stream(&self) -> Stream<T> {
         self.stream.clone()
     }
 
+    /// Emits a new value from this Sink, which will broadcast out to any Subscriber to the stream
+    /// returned by the `get_stream` function.
     pub fn emit(&self, value: T) {
         self.emit_rc(Rc::new(value))
     }
 
+    /// Same logic as `emit`, but takes an existing Rc pointer (Epoxy streams use Rc pointers
+    /// internally, so this saves a Copy).
     pub fn emit_rc(&self, value: Rc<T>) {
         self.stream.emit_rc(value)
     }
