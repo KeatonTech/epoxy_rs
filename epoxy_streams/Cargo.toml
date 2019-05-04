@@ -1,6 +1,6 @@
 [package]
 name = "epoxy_streams"
-version = "0.3.0"
+version = "0.3.1"
 authors = ["keatonbrandt <keaton.brandt@gmail.com>"]
 edition = "2018"
 license = "MIT"
