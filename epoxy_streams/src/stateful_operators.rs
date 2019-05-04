@@ -1,5 +1,5 @@
 use super::{Stream, Subscription};
-use std::rc::Rc;
+use std::sync::Arc;
 
 pub struct StatefulDerivedStreamFields<T, StateType> {
     state: StateType,
@@ -44,13 +44,13 @@ impl<T: 'static> Stream<T> {
     /// ```
     pub fn scan<U, F>(&self, scan_fn: F, initial_value: U) -> Stream<U>
     where
-        F: Fn(&U, Rc<T>) -> U,
+        F: Fn(&U, Arc<T>) -> U,
         F: 'static,
         U: 'static,
     {
-        let derived_stream = Stream::new_with_fields::<StatefulDerivedStreamFields<T, Rc<U>>>(
+        let derived_stream = Stream::new_with_fields::<StatefulDerivedStreamFields<T, Arc<U>>>(
             StatefulDerivedStreamFields {
-                state: Rc::new(initial_value),
+                state: Arc::new(initial_value),
                 subscription: None,
             },
         );
@@ -58,21 +58,21 @@ impl<T: 'static> Stream<T> {
 
         let subscription = self.subscribe(move |val| {
             let new_state = subscription_stream_ref.read_extra_fields(
-                |fields: &StatefulDerivedStreamFields<T, Rc<U>>| {
-                    Rc::new(scan_fn(&fields.state, val))
+                |fields: &StatefulDerivedStreamFields<T, Arc<U>>| {
+                    Arc::new(scan_fn(&fields.state, val))
                 },
             );
 
             subscription_stream_ref.mutate_extra_fields(
-                |fields: &mut StatefulDerivedStreamFields<T, Rc<U>>| {
-                    fields.state = Rc::clone(&new_state)
+                |fields: &mut StatefulDerivedStreamFields<T, Arc<U>>| {
+                    fields.state = Arc::clone(&new_state)
                 },
             );
             subscription_stream_ref.emit_rc(new_state);
         });
 
         derived_stream.mutate_extra_fields(
-            move |fields: &mut StatefulDerivedStreamFields<T, Rc<U>>| {
+            move |fields: &mut StatefulDerivedStreamFields<T, Arc<U>>| {
                 fields.subscription = Some(subscription);
             },
         );

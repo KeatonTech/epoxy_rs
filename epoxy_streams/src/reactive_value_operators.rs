@@ -1,5 +1,5 @@
 use super::{ReactiveValue, ReadonlyReactiveValue};
-use std::rc::Rc;
+use std::sync::Arc;
 
 impl<T: 'static> ReactiveValue<T> {
     /// Returns a ReactiveValue that only changes when the content of the original ReactiveValue
@@ -69,7 +69,7 @@ impl<T: 'static> ReactiveValue<T> {
         F: Fn(&T) -> bool,
         F: 'static,
     {
-        let fallback_value_rc = Rc::new(fallback_value);
+        let fallback_value_rc = Arc::new(fallback_value);
         let inner_rc = fallback_value_rc.clone();
         value
             .as_stream()

@@ -1,7 +1,6 @@
 use std::any::Any;
 use std::collections::BTreeMap;
-use std::rc::Rc;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 /// Used to indicate that a stream has no extra fields, which are used to create derived streams.
 pub struct EmptyStruct {}
@@ -9,7 +8,7 @@ pub struct EmptyStruct {}
 pub(crate) struct StreamImpl<T> {
     highest_id: u16,
     is_alive: bool,
-    on_emit: BTreeMap<u16, Box<Fn(Rc<T>)>>,
+    on_emit: BTreeMap<u16, Box<Fn(Arc<T>)>>,
     pub(crate) extra_fields: *mut (dyn Any + 'static),
 }
 
@@ -53,7 +52,7 @@ pub(crate) struct StreamImpl<T> {
 /// assert_eq!(*last_value.lock().unwrap(), 100);
 /// ```
 pub struct Stream<T> {
-    pub(crate) pointer: Rc<Mutex<StreamImpl<T>>>,
+    pub(crate) pointer: Arc<Mutex<StreamImpl<T>>>,
 }
 
 /// A Subscription object ties a stream to a listener function such that the listener function is
@@ -107,7 +106,7 @@ pub struct Sink<T> {
 impl<T> Clone for Stream<T> {
     fn clone(&self) -> Self {
         Stream {
-            pointer: Rc::clone(&self.pointer),
+            pointer: Arc::clone(&self.pointer),
         }
     }
 }
@@ -115,7 +114,7 @@ impl<T> Clone for Stream<T> {
 impl<T> StreamImpl<T> {
     fn subscribe<F>(&mut self, listener: F) -> u16
     where
-        F: Fn(Rc<T>),
+        F: Fn(Arc<T>),
         F: 'static,
     {
         let new_subscription_id = self.highest_id;
@@ -124,7 +123,7 @@ impl<T> StreamImpl<T> {
         new_subscription_id
     }
 
-    pub(crate) fn emit_rc(&self, value: Rc<T>) {
+    pub(crate) fn emit_rc(&self, value: Arc<T>) {
         for (_id, call) in &self.on_emit {
             call(value.clone())
         }
@@ -139,7 +138,7 @@ impl<T> Stream<T> {
     /// Rust's `move` annotation.
     pub fn subscribe<F>(&self, listener: F) -> Subscription<T>
     where
-        F: Fn(Rc<T>),
+        F: Fn(Arc<T>),
         F: 'static,
     {
         let mut stream_mut = match self.pointer.lock() {
@@ -186,7 +185,7 @@ impl<T> Stream<T> {
         FieldsType: 'static,
     {
         Stream {
-            pointer: Rc::new(Mutex::new(StreamImpl {
+            pointer: Arc::new(Mutex::new(StreamImpl {
                 highest_id: 0_u16,
                 is_alive: true,
                 on_emit: BTreeMap::new(),
@@ -195,7 +194,7 @@ impl<T> Stream<T> {
         }
     }
 
-    pub(crate) fn emit_rc(&self, value: Rc<T>) {
+    pub(crate) fn emit_rc(&self, value: Arc<T>) {
         match self.pointer.lock() {
             Ok(stream_impl) => stream_impl.emit_rc(value),
             Err(err) => panic!("Stream mutex poisoned: {}", err),
@@ -262,12 +261,12 @@ impl<T> Sink<T> {
     /// Emits a new value from this Sink, which will broadcast out to any Subscriber to the stream
     /// returned by the `get_stream` function.
     pub fn emit(&self, value: T) {
-        self.emit_rc(Rc::new(value))
+        self.emit_rc(Arc::new(value))
     }
 
-    /// Same logic as `emit`, but takes an existing Rc pointer (Epoxy streams use Rc pointers
+    /// Same logic as `emit`, but takes an existing Arc pointer (Epoxy streams use Arc pointers
     /// internally, so this saves a Copy).
-    pub fn emit_rc(&self, value: Rc<T>) {
+    pub fn emit_rc(&self, value: Arc<T>) {
         self.stream.emit_rc(value)
     }
 }

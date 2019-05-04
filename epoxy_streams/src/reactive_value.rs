@@ -1,12 +1,11 @@
 use super::{Stream, Sink, Subscription};
 use std::default::Default;
-use std::rc::Rc;
 use std::sync::{Arc, RwLock};
 
 /// Trait that applies to both readonly and writeable reactive values.
 pub trait ReactiveValue<T> {
     /// Returns the current value of the ReactiveValue.
-    fn get(&self) -> Rc<T>;
+    fn get(&self) -> Arc<T>;
 
     /// Returns a Stream that represents the changing value over time.
     /// Use this function to subscribe to changes in the ReactiveValue.ReadonlyReactiveValue
@@ -37,7 +36,7 @@ pub trait ReactiveValue<T> {
 // IMPLEMENTATIONS
 
 struct ReadonlyReactiveValueImpl<T> {
-    value: Box<RwLock<Rc<T>>>,
+    value: Box<RwLock<Arc<T>>>,
 
     #[allow(dead_code)]
     subscription: Subscription<T>,
@@ -48,16 +47,16 @@ impl<T> ReactiveValue<T> for ReadonlyReactiveValueImpl<T> {
         self.subscription.stream.clone()
     }
 
-    fn get(&self) -> Rc<T> {
+    fn get(&self) -> Arc<T> {
         match self.value.read() {
-            Ok(val) => Rc::clone(&val),
+            Ok(val) => Arc::clone(&val),
             Err(err) => panic!("ReactiveValue mutex poisoned: {}", err),
         }
     }
 }
 
 struct WriteableReactiveValueImpl<T> {
-    value: Box<RwLock<Rc<T>>>,
+    value: Box<RwLock<Arc<T>>>,
     host: Sink<T>,
 }
 
@@ -66,9 +65,9 @@ impl<T> ReactiveValue<T> for WriteableReactiveValueImpl<T> {
         self.host.get_stream()
     }
 
-    fn get(&self) -> Rc<T> {
+    fn get(&self) -> Arc<T> {
         match self.value.read() {
-            Ok(val) => Rc::clone(&val),
+            Ok(val) => Arc::clone(&val),
             Err(err) => panic!("ReactiveValue mutex poisoned: {}", err),
         }
     }
@@ -113,7 +112,7 @@ impl<T> ReactiveValue<T> for ReadonlyReactiveValue<T> {
         self.pointer.as_stream()
     }
 
-    fn get(&self) -> Rc<T> {
+    fn get(&self) -> Arc<T> {
         self.pointer.get()
     }
 }
@@ -147,7 +146,7 @@ impl<T> ReactiveValue<T> for WriteableReactiveValue<T> {
         self.pointer.as_stream()
     }
 
-    fn get(&self) -> Rc<T> {
+    fn get(&self) -> Arc<T> {
         self.pointer.get()
     }
 }
@@ -163,14 +162,14 @@ impl<T> Clone for WriteableReactiveValue<T> {
 impl<T: 'static> WriteableReactiveValue<T> {
     /// Sets the value of the ReactiveValue, using a mutex to ensure thread safety.
     ///
-    /// Note: use `set_rc` if your new value is already an Rc, as this will prevent the
+    /// Note: use `set_rc` if your new value is already an Arc, as this will prevent the
     /// value from being unnecessarily copied.
     pub fn set(&self, value: T) {
-        self.set_rc(Rc::new(value))
+        self.set_rc(Arc::new(value))
     }
 
     /// Sets the value of the ReactiveValue, using a mutex to ensure thread safety.
-    pub fn set_rc(&self, value: Rc<T>) {
+    pub fn set_rc(&self, value: Arc<T>) {
         {
             let mut val_mut = self.pointer.value.write().unwrap();
             *val_mut = value.clone();
@@ -192,7 +191,7 @@ impl<T: 'static> WriteableReactiveValue<T> {
 impl<T: 'static> ReactiveValue<T> {
     /// Creates a new writeable reactive value.
     ///
-    /// Note: Use `new_rc` if your default value is already an Rc, as this will
+    /// Note: Use `new_rc` if your default value is already an Arc, as this will
     /// prevent another pointer from being created unnecessarily.
     ///
     /// # Examples
@@ -206,11 +205,11 @@ impl<T: 'static> ReactiveValue<T> {
     /// assert_eq!(*writeable_value.get(), 50);
     /// ```
     pub fn new(initial_value: T) -> WriteableReactiveValue<T> {
-        ReactiveValue::new_rc(Rc::new(initial_value))
+        ReactiveValue::new_rc(Arc::new(initial_value))
     }
 
     /// See docs for `new`
-    pub fn new_rc(initial_value: Rc<T>) -> WriteableReactiveValue<T> {
+    pub fn new_rc(initial_value: Arc<T>) -> WriteableReactiveValue<T> {
         WriteableReactiveValue {
             pointer: Arc::new(WriteableReactiveValueImpl {
                 value: Box::new(RwLock::new(initial_value)),
@@ -227,12 +226,12 @@ impl<T: 'static> ReactiveValue<T> {
     }
 
     pub fn from_stream_with_default(stream: Stream<T>, default: T) -> ReadonlyReactiveValue<T> {
-        ReactiveValue::from_stream_with_default_rc(stream, Rc::new(default))
+        ReactiveValue::from_stream_with_default_rc(stream, Arc::new(default))
     }
 
     pub fn from_stream_with_default_rc(
         stream: Stream<T>,
-        default: Rc<T>,
+        default: Arc<T>,
     ) -> ReadonlyReactiveValue<T> {
         let original_value = Box::new(RwLock::new(default));
         let val_ptr = Box::into_raw(original_value);
@@ -285,7 +284,7 @@ impl<T: 'static> Stream<T> {
     }
 
     /// See `to_reactive_value`.
-    pub fn to_reactive_value_with_default_rc(self, default: Rc<T>) -> ReadonlyReactiveValue<T> {
+    pub fn to_reactive_value_with_default_rc(self, default: Arc<T>) -> ReadonlyReactiveValue<T> {
         ReactiveValue::from_stream_with_default_rc(self, default)
     }
 }

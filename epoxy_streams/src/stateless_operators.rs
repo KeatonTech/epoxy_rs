@@ -1,5 +1,5 @@
 use super::{Stream, Subscription};
-use std::rc::Rc;
+use std::sync::Arc;
 
 pub struct DerivedStreamFields<T> {
     #[allow(dead_code)]
@@ -9,7 +9,7 @@ pub struct DerivedStreamFields<T> {
 impl<T: 'static> Stream<T> {
     fn create_derived_stream<U, F>(&self, subscription_re_emit: F) -> Stream<U>
     where
-        F: Fn(&Stream<U>, Rc<T>),
+        F: Fn(&Stream<U>, Arc<T>),
         F: 'static,
         U: 'static,
     {
@@ -101,7 +101,7 @@ impl<T: 'static> Stream<T> {
         F: 'static,
     {
         self.create_derived_stream(move |host, val| {
-            host.emit_rc(Rc::new(map_function(&*val)));
+            host.emit_rc(Arc::new(map_function(&*val)));
         })
     }
 
@@ -119,7 +119,7 @@ impl<T: 'static> Stream<T> {
     /// let last_value = Arc::new(Mutex::new(0_i32));
     /// let last_value_write = last_value.clone();
     /// 
-    /// let fallback_value = Rc::new(10);
+    /// let fallback_value = Arc::new(10);
     ///
     /// let subscription = stream
     ///     .map_rc(move |val| if (*val < 0) { fallback_value.clone() } else { val })
@@ -139,7 +139,7 @@ impl<T: 'static> Stream<T> {
     pub fn map_rc<U, F>(&self, map_function: F) -> Stream<U>
     where
         U: 'static,
-        F: Fn(Rc<T>) -> Rc<U>,
+        F: Fn(Arc<T>) -> Arc<U>,
         F: 'static,
     {
         self.create_derived_stream(move |host, val| {
@@ -183,7 +183,7 @@ impl<T: 'static> Stream<T> {
             let mut iter = iter_map_function(&*val).into_iter();
             loop {
                 match iter.next() {
-                    Some(x) => host.emit_rc(Rc::new(x)),
+                    Some(x) => host.emit_rc(Arc::new(x)),
                     None => break,
                 }
             }

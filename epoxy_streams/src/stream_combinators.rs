@@ -1,5 +1,5 @@
 use super::{Stream, Subscription};
-use std::rc::Rc;
+use std::sync::Arc;
 
 pub struct CombinedStreamFields<T> {
     #[allow(dead_code)]
@@ -41,7 +41,7 @@ pub fn merge<T: 'static>(streams: Vec<Stream<T>>) -> Stream<T> {
     let subscriptions: Vec<Subscription<T>> = streams
         .into_iter()
         .map(|stream| {
-            let weak_stream_ref = Rc::downgrade(&merged_stream.pointer);
+            let weak_stream_ref = Arc::downgrade(&merged_stream.pointer);
             stream.subscribe(move |value| match weak_stream_ref.upgrade() {
                 Some(stream_ref) => match stream_ref.lock() {
                     Ok(stream_impl) => stream_impl.emit_rc(value),

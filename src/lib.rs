@@ -29,7 +29,7 @@
 //! | Operation          | Property of returned stream                                            |
 //! |--------------------|------------------------------------------------------------------------|
 //! | map(fn)            | Runs all values from the input stream through a mapper function        |
-//! | map_rc(fn)         | Same as map() but the mapper function takes and returns an Rc          |
+//! | map_rc(fn)         | Same as map() but the mapper function takes and returns an Arc          |
 //! | flat_map(fn)       | Similar to map() but iterates through the result of the mapper function|
 //! | filter(fn)         | Returns only input values that pass the given filter function          |
 //! | inspect(method)    | Passes through the original stream, calls a method for each item       |
@@ -51,7 +51,7 @@
 //! just as easy as dealing with any other Rust variable.
 //! 
 //! ```
-//! # #[macro_use] extern crate reactive;
+//! # #[macro_use] extern crate epoxy;
 //! use epoxy::ReactiveValue;
 //! 
 //! let points = epoxy::ReactiveValue::new(4);
