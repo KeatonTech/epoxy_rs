@@ -1,4 +1,4 @@
-use super::{Stream, Sink, Subscription};
+use super::{Sink, Stream, Subscription};
 use std::default::Default;
 use std::sync::{Arc, RwLock};
 

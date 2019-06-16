@@ -12,7 +12,7 @@ impl<T: 'static> ReactiveValue<T> {
     /// # Examples
     /// ```
     /// use epoxy_streams::ReactiveValue;
-    /// 
+    ///
     /// let original = ReactiveValue::new(1_i32);
     /// let only_even = ReactiveValue::sanitize(&original, |val| val % 2 == 0, 0);
     /// assert_eq!(*only_even.get(), 0);
@@ -46,7 +46,7 @@ impl<T: 'static> ReactiveValue<T> {
     /// # Examples
     /// ```
     /// use epoxy_streams::ReactiveValue;
-    /// 
+    ///
     /// let original = ReactiveValue::new(1_i32);
     /// let only_even = ReactiveValue::sanitize(&original, |val| val % 2 == 0, 0);
     /// assert_eq!(*only_even.get(), 0);
@@ -73,7 +73,13 @@ impl<T: 'static> ReactiveValue<T> {
         let inner_rc = fallback_value_rc.clone();
         value
             .as_stream()
-            .map_rc(move |val| if filter_function(&*val) { val } else { inner_rc.clone() })
+            .map_rc(move |val| {
+                if filter_function(&*val) {
+                    val
+                } else {
+                    inner_rc.clone()
+                }
+            })
             .to_reactive_value_with_default_rc(fallback_value_rc)
     }
 
@@ -84,7 +90,7 @@ impl<T: 'static> ReactiveValue<T> {
     ///
     /// ```
     /// use epoxy_streams::ReactiveValue;
-    /// 
+    ///
     /// let original = ReactiveValue::new("Bread");
     /// let thing_that_is_cool = ReactiveValue::map(&original, |str| {
     ///     format!("{} is cool", str)

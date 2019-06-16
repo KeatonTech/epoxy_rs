@@ -118,7 +118,7 @@ impl<T: 'static> Stream<T> {
     ///
     /// let last_value = Arc::new(Mutex::new(0_i32));
     /// let last_value_write = last_value.clone();
-    /// 
+    ///
     /// let fallback_value = Arc::new(10);
     ///
     /// let subscription = stream
@@ -132,7 +132,7 @@ impl<T: 'static> Stream<T> {
     ///
     /// stream_host.emit(12);
     /// assert_eq!(*last_value.lock().unwrap(), 12);
-    /// 
+    ///
     /// stream_host.emit(-10);
     /// assert_eq!(*last_value.lock().unwrap(), 10);
     /// ```

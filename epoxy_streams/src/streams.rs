@@ -12,14 +12,13 @@ pub(crate) struct StreamImpl<T> {
     pub(crate) extra_fields: *mut (dyn Any + 'static),
 }
 
-
 /// Streams are objects that emit events in sequence as they are created. Streams are
 /// similar to Iterators in Rust in that both represent a sequence of values and both
 /// can be modified by 'pipe' functions like `map` and `filter`. The difference is that
 /// all values of an iterator are known immediately (or, at least, execution will block
 /// while the next item is retrieved), whereas it would not be uncommon for a stream to
 /// live for the entire duration of a program, emitting new values from time-to-time.
-/// 
+///
 /// # Examples
 ///
 /// ```
@@ -58,7 +57,7 @@ pub struct Stream<T> {
 /// A Subscription object ties a stream to a listener function such that the listener function is
 /// run whenever a new value is added to the stream. When the Subscription object is destroyed
 /// the listener function will stop getting called.
-/// 
+///
 /// # Examples
 ///
 /// ```
@@ -78,7 +77,7 @@ pub struct Subscription<T> {
 /// A Sink is an object used to create a Stream. If you have ever visited a kitchen or bathroom
 /// you have probably observed this phenomena already. In more technical terms, Sinks are the
 /// 'write' part of functional reactive programming, and Streams are the 'read' part.
-/// 
+///
 /// # Examples
 /// ```
 /// use std::sync::{Arc, Mutex};
@@ -158,6 +157,40 @@ impl<T> Stream<T> {
     pub fn unsubscribe(&self, _subscription: Subscription<T>) {
         // By moving the subscription into this function it will automatically get dropped,
         // thereby calling the internal unsubscribe_by_id function.
+    }
+
+    /// Dispatches each item in a stream into a Sink. This will last as long as
+    /// the returned Subscription object stays in scope.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::{Arc, Mutex};
+    ///
+    /// let stream_host_1: epoxy_streams::Sink<i32> = epoxy_streams::Sink::new();
+    /// let stream = stream_host_1.get_stream();
+    ///
+    /// let stream_host_2: epoxy_streams::Sink<i32> = epoxy_streams::Sink::new();
+    /// let subscription = stream_host_2.get_stream().pipe_into(&stream_host_1);
+    ///
+    /// let last_value = Arc::new(Mutex::new(0_i32));
+    /// let last_value_write = last_value.clone();
+    /// let subscription = stream.subscribe(move |val| {
+    ///     *last_value_write.lock().unwrap() = *val;
+    /// });
+    ///
+    /// stream_host_2.emit(1);
+    /// assert_eq!(*last_value.lock().unwrap(), 1);
+    ///
+    /// stream_host_2.emit(100);
+    /// assert_eq!(*last_value.lock().unwrap(), 100);
+    /// ```
+    pub fn pipe_into(&self, sink: &Sink<T>) -> Subscription<T>
+    where
+        T: 'static,
+    {
+        let stream = sink.stream.clone();
+        self.subscribe(move |item| stream.emit_rc(item))
     }
 
     /// Returns the total number of subscribers listening to this stream, includes any derived

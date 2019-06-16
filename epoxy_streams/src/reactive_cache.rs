@@ -1,14 +1,14 @@
 use super::{Stream, Subscription};
-use std::sync::{Arc, RwLock, RwLockReadGuard};
 use std::collections::VecDeque;
+use std::sync::{Arc, RwLock, RwLockReadGuard};
 
 /// Stores the last N values emitted by a stream. It is similar to ReactiveValue (which
 /// stores the most recent value emitted by a stream), but cannot be used to re-host
 /// a stream (if you need that, use the `buffer` stream operator instead).
-/// 
+///
 /// ReactiveCache has some practical uses in reactive implementations, but is especially
 /// helpful inside unit tests to monitor streams.
-/// 
+///
 /// # Examples
 /// ```
 /// use epoxy_streams::ReactiveCache;
@@ -31,17 +31,15 @@ pub struct ReactiveCache<T: 'static> {
 }
 
 impl<T: 'static> ReactiveCache<T> {
-    
     /// Constructs a new infinite-size ReactiveCache from a stream. This cache will
     /// store all items emitted by the stream until explicitly cleared.
-    pub fn from_stream(stream: Stream<T>) -> ReactiveCache<T>
-    {
+    pub fn from_stream(stream: Stream<T>) -> ReactiveCache<T> {
         ReactiveCache::from_stream_with_max_size_option(stream, None)
     }
 
     /// Constructs a new finite-size ReactiveCache from a stream. This cache will hold
     /// at most the most recent `size` values emitted by the stream.
-    /// 
+    ///
     /// # Examples
     /// ```
     /// use epoxy_streams::ReactiveCache;
@@ -61,18 +59,17 @@ impl<T: 'static> ReactiveCache<T> {
     /// assert_eq!(*cache.get()[0], 200);
     /// assert_eq!(*cache.get()[1], 300);
     /// ```
-    pub fn from_stream_with_size(stream: Stream<T>, size: usize) -> ReactiveCache<T>
-    {
+    pub fn from_stream_with_size(stream: Stream<T>, size: usize) -> ReactiveCache<T> {
         ReactiveCache::from_stream_with_max_size_option(stream, Some(size))
     }
-    
+
     fn from_stream_with_max_size_option(
         stream: Stream<T>,
         max_size: Option<usize>,
     ) -> ReactiveCache<T> {
         let original_value = Box::new(RwLock::new(match max_size {
             Some(size) => VecDeque::with_capacity(size),
-            None => VecDeque::new()
+            None => VecDeque::new(),
         }));
         let val_ptr = Box::into_raw(original_value);
         unsafe {
@@ -88,7 +85,7 @@ impl<T: 'static> ReactiveCache<T> {
             });
             ReactiveCache {
                 cache: value,
-                subscription: subscription
+                subscription: subscription,
             }
         }
     }
