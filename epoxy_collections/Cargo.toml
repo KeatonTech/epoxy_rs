@@ -1,0 +1,12 @@
+[package]
+name = "epoxy_collections"
+version = "0.1.0"
+authors = ["keatonbrandt <keaton.brandt@gmail.com>"]
+edition = "2018"
+description = "Base collections implementation for the `epoxy_frp` library. Please use epoxy_frp instead."
+
+[lib]
+name = "epoxy_collections"
+
+[dependencies]
+epoxy_streams = { path = "../epoxy_streams", version = "0.3.1" }
