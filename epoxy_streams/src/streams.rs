@@ -2,9 +2,6 @@ use std::any::Any;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 
-/// Used to indicate that a stream has no extra fields, which are used to create derived streams.
-pub struct EmptyStruct {}
-
 pub(crate) struct StreamImpl<T> {
     highest_id: u16,
     is_alive: bool,
