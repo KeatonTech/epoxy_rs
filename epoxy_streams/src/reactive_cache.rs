@@ -24,13 +24,13 @@ use std::sync::{Arc, RwLock, RwLockReadGuard};
 /// assert_eq!(*cache.get()[0], 100);
 /// ```
 pub struct ReactiveCache<T: 'static> {
-    cache: Box<RwLock<VecDeque<Arc<T>>>>,
+    cache: Arc<RwLock<VecDeque<Arc<T>>>>,
 
     #[allow(dead_code)]
     subscription: Subscription<T>,
 }
 
-impl<T: 'static> ReactiveCache<T> {
+impl<T: Send + Sync + 'static> ReactiveCache<T> {
     /// Constructs a new infinite-size ReactiveCache from a stream. This cache will
     /// store all items emitted by the stream until explicitly cleared.
     pub fn from_stream(stream: Stream<T>) -> ReactiveCache<T> {
@@ -67,26 +67,25 @@ impl<T: 'static> ReactiveCache<T> {
         stream: Stream<T>,
         max_size: Option<usize>,
     ) -> ReactiveCache<T> {
-        let original_value = Box::new(RwLock::new(match max_size {
+        let value_arc = Arc::new(RwLock::new(match max_size {
             Some(size) => VecDeque::with_capacity(size),
             None => VecDeque::new(),
         }));
-        let val_ptr = Box::into_raw(original_value);
-        unsafe {
-            let value = Box::from_raw(val_ptr);
-            let subscription = stream.subscribe(move |val| {
-                if let Some(size) = max_size {
-                    let vec_len = (*val_ptr).read().unwrap().len();
-                    if vec_len >= size {
-                        (*val_ptr).write().unwrap().pop_front();
-                    }
+
+        let subscription_arc = value_arc.clone();
+        let subscription = stream.subscribe(move |val| {
+            if let Some(size) = max_size {
+                let vec_len = subscription_arc.read().unwrap().len();
+                if vec_len >= size {
+                    subscription_arc.write().unwrap().pop_front();
                 }
-                (*val_ptr).write().unwrap().push_back(val.clone());
-            });
-            ReactiveCache {
-                cache: value,
-                subscription: subscription,
             }
+            subscription_arc.write().unwrap().push_back(val.clone());
+        });
+
+        ReactiveCache {
+            cache: value_arc,
+            subscription: subscription,
         }
     }
 

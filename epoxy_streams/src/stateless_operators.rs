@@ -6,10 +6,12 @@ pub struct DerivedStreamFields<T> {
     subscription: Option<Subscription<T>>,
 }
 
-impl<T: 'static> Stream<T> {
+impl<T: 'static + Send + Sync> Stream<T> {
     fn create_derived_stream<U, F>(&self, subscription_re_emit: F) -> Stream<U>
     where
         F: Fn(&Stream<U>, Arc<T>),
+        F: Send,
+        F: Sync,
         F: 'static,
         U: 'static,
     {
@@ -60,6 +62,8 @@ impl<T: 'static> Stream<T> {
     pub fn filter<F>(&self, filter_function: F) -> Stream<T>
     where
         F: Fn(&T) -> bool,
+        F: Send,
+        F: Sync,
         F: 'static,
     {
         self.create_derived_stream(move |host, val| {
@@ -98,6 +102,8 @@ impl<T: 'static> Stream<T> {
     where
         U: 'static,
         F: Fn(&T) -> U,
+        F: Send,
+        F: Sync,
         F: 'static,
     {
         self.create_derived_stream(move |host, val| {
@@ -140,6 +146,8 @@ impl<T: 'static> Stream<T> {
     where
         U: 'static,
         F: Fn(Arc<T>) -> Arc<U>,
+        F: Send,
+        F: Sync,
         F: 'static,
     {
         self.create_derived_stream(move |host, val| {
@@ -177,6 +185,8 @@ impl<T: 'static> Stream<T> {
         U: 'static,
         C: IntoIterator<Item = U>,
         F: Fn(&T) -> C,
+        F: Send,
+        F: Sync,
         F: 'static,
     {
         self.create_derived_stream(move |host, val| {
@@ -196,6 +206,8 @@ impl<T: 'static> Stream<T> {
     pub fn inspect<F>(&self, inspect_function: F) -> Stream<T>
     where
         F: Fn(&T),
+        F: Send,
+        F: Sync,
         F: 'static,
     {
         self.create_derived_stream(move |host, val| {

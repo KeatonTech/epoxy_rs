@@ -1,4 +1,4 @@
-use super::{Sink, Stream, Subscription};
+use super::{Stream, Sink, Subscription};
 use std::default::Default;
 use std::sync::{Arc, RwLock};
 
@@ -36,7 +36,7 @@ pub trait ReactiveValue<T> {
 // IMPLEMENTATIONS
 
 struct ReadonlyReactiveValueImpl<T> {
-    value: Box<RwLock<Arc<T>>>,
+    value: Arc<RwLock<Arc<T>>>,
 
     #[allow(dead_code)]
     subscription: Subscription<T>,
@@ -107,7 +107,7 @@ pub struct ReadonlyReactiveValue<T> {
     pointer: Arc<ReadonlyReactiveValueImpl<T>>,
 }
 
-impl<T> ReactiveValue<T> for ReadonlyReactiveValue<T> {
+impl<T: Send + Sync + 'static> ReactiveValue<T> for ReadonlyReactiveValue<T> {
     fn as_stream(&self) -> Stream<T> {
         self.pointer.as_stream()
     }
@@ -117,7 +117,7 @@ impl<T> ReactiveValue<T> for ReadonlyReactiveValue<T> {
     }
 }
 
-impl<T> Clone for ReadonlyReactiveValue<T> {
+impl<T: Send + Sync + 'static> Clone for ReadonlyReactiveValue<T> {
     fn clone(&self) -> Self {
         ReadonlyReactiveValue {
             pointer: Arc::clone(&self.pointer),
@@ -159,7 +159,7 @@ impl<T> Clone for WriteableReactiveValue<T> {
     }
 }
 
-impl<T: 'static> WriteableReactiveValue<T> {
+impl<T: 'static + Send + Sync> WriteableReactiveValue<T> {
     /// Sets the value of the ReactiveValue, using a mutex to ensure thread safety.
     ///
     /// Note: use `set_rc` if your new value is already an Arc, as this will prevent the
@@ -188,7 +188,7 @@ impl<T: 'static> WriteableReactiveValue<T> {
 
 // CONSTRUCTORS
 
-impl<T: 'static> ReactiveValue<T> {
+impl<T: 'static + Send + Sync> ReactiveValue<T> {
     /// Creates a new writeable reactive value.
     ///
     /// Note: Use `new_rc` if your default value is already an Arc, as this will
@@ -233,25 +233,24 @@ impl<T: 'static> ReactiveValue<T> {
         stream: Stream<T>,
         default: Arc<T>,
     ) -> ReadonlyReactiveValue<T> {
-        let original_value = Box::new(RwLock::new(default));
-        let val_ptr = Box::into_raw(original_value);
-        unsafe {
-            let value = Box::from_raw(val_ptr);
-            let subscription = stream.subscribe(move |val| {
-                let mut val_mut = (*val_ptr).write().unwrap();
-                *val_mut = val.clone();
-            });
-            ReadonlyReactiveValue {
-                pointer: Arc::new(ReadonlyReactiveValueImpl {
-                    value: value,
-                    subscription: subscription,
-                }),
-            }
+        let value_arc = Arc::new(RwLock::new(default));
+
+        let subscription_arc = value_arc.clone();
+        let subscription = stream.subscribe(move |val| {
+            let mut val_mut = subscription_arc.write().unwrap();
+            *val_mut = val.clone();
+        });
+
+        ReadonlyReactiveValue {
+            pointer: Arc::new(ReadonlyReactiveValueImpl {
+                value: value_arc,
+                subscription: subscription,
+            }),
         }
     }
 }
 
-impl<T: 'static> Stream<T> {
+impl<T: 'static + Send + Sync> Stream<T> {
     /// Creates a ReactiveValue from the stream, using the empty state value for type T as the
     /// default.
     ///

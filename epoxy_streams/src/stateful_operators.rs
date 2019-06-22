@@ -45,8 +45,12 @@ impl<T: 'static> Stream<T> {
     pub fn scan<U, F>(&self, scan_fn: F, initial_value: U) -> Stream<U>
     where
         F: Fn(&U, Arc<T>) -> U,
+        F: Send,
+        F: Sync,
         F: 'static,
         U: 'static,
+        U: Send,
+        U: Sync,
     {
         let derived_stream = Stream::new_with_fields::<StatefulDerivedStreamFields<T, Arc<U>>>(
             StatefulDerivedStreamFields {
@@ -136,6 +140,8 @@ impl<T: 'static> Stream<T> {
     pub fn buffer(&self, max_buffer_size: usize) -> Stream<Vec<T>>
     where
         T: Clone,
+        T: Send,
+        T: Sync,
     {
         self.scan(
             move |acc, val| {

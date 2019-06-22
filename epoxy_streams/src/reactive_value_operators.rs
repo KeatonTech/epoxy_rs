@@ -1,7 +1,7 @@
 use super::{ReactiveValue, ReadonlyReactiveValue};
 use std::sync::Arc;
 
-impl<T: 'static> ReactiveValue<T> {
+impl<T: 'static + Send + Sync> ReactiveValue<T> {
     /// Returns a ReactiveValue that only changes when the content of the original ReactiveValue
     /// passes a test (specified by `filter_function`). The output ReactiveValue will be equal
     /// to `default_value` until the original ReactiveValue passes the test.
@@ -33,6 +33,8 @@ impl<T: 'static> ReactiveValue<T> {
     ) -> ReadonlyReactiveValue<T>
     where
         F: Fn(&T) -> bool,
+        F: Send,
+        F: Sync,
         F: 'static,
     {
         value
@@ -67,6 +69,8 @@ impl<T: 'static> ReactiveValue<T> {
     ) -> ReadonlyReactiveValue<T>
     where
         F: Fn(&T) -> bool,
+        F: Send,
+        F: Sync,
         F: 'static,
     {
         let fallback_value_rc = Arc::new(fallback_value);
@@ -104,7 +108,11 @@ impl<T: 'static> ReactiveValue<T> {
     pub fn map<U, F>(value: &ReactiveValue<T>, map_function: F) -> ReadonlyReactiveValue<U>
     where
         U: 'static,
+        U: Send,
+        U: Sync,
         F: Fn(&T) -> U,
+        F: Send,
+        F: Sync,
         F: 'static,
     {
         let default = map_function(&*value.get());

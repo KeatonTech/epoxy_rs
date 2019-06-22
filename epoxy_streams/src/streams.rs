@@ -8,8 +8,8 @@ pub struct EmptyStruct {}
 pub(crate) struct StreamImpl<T> {
     highest_id: u16,
     is_alive: bool,
-    on_emit: BTreeMap<u16, Box<Fn(Arc<T>)>>,
-    pub(crate) extra_fields: Option<Box<dyn Any + 'static>>,
+    on_emit: BTreeMap<u16, Box<Fn(Arc<T>) + Send + Sync>>,
+    pub(crate) extra_fields: Option<Box<dyn Any + Send + Sync + 'static>>,
 }
 
 /// Streams are objects that emit events in sequence as they are created. Streams are
@@ -114,6 +114,8 @@ impl<T> StreamImpl<T> {
     fn subscribe<F>(&mut self, listener: F) -> u16
     where
         F: Fn(Arc<T>),
+        F: Send,
+        F: Sync,
         F: 'static,
     {
         let new_subscription_id = self.highest_id;
@@ -138,6 +140,8 @@ impl<T> Stream<T> {
     pub fn subscribe<F>(&self, listener: F) -> Subscription<T>
     where
         F: Fn(Arc<T>),
+        F: Send,
+        F: Sync,
         F: 'static,
     {
         let mut stream_mut = match self.pointer.lock() {
@@ -227,6 +231,8 @@ impl<T> Stream<T> {
     pub(crate) fn new_with_fields<FieldsType>(fields: FieldsType) -> Stream<T>
     where
         FieldsType: 'static,
+        FieldsType: Send,
+        FieldsType: Sync,
     {
         Stream {
             pointer: Arc::new(Mutex::new(StreamImpl {
@@ -248,6 +254,8 @@ impl<T> Stream<T> {
     pub(crate) fn read_extra_fields<ExtraFieldsType, RetType, FnType>(&self, cb: FnType) -> RetType
     where
         ExtraFieldsType: 'static,
+        ExtraFieldsType: Send,
+        ExtraFieldsType: Sync,
         RetType: 'static,
         FnType: FnOnce(&ExtraFieldsType) -> RetType,
     {
@@ -267,6 +275,8 @@ impl<T> Stream<T> {
     pub(crate) fn mutate_extra_fields<ExtraFieldsType, FnType>(&self, cb: FnType)
     where
         ExtraFieldsType: 'static,
+        ExtraFieldsType: Send,
+        ExtraFieldsType: Sync,
         FnType: FnOnce(&mut ExtraFieldsType),
     {
         match self.pointer.lock() {
