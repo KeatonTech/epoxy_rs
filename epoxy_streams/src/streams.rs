@@ -9,7 +9,7 @@ pub(crate) struct StreamImpl<T> {
     highest_id: u16,
     is_alive: bool,
     on_emit: BTreeMap<u16, Box<Fn(Arc<T>)>>,
-    pub(crate) extra_fields: *mut (dyn Any + 'static),
+    pub(crate) extra_fields: Option<Box<dyn Any + 'static>>,
 }
 
 /// Streams are objects that emit events in sequence as they are created. Streams are
@@ -213,6 +213,17 @@ impl<T> Stream<T> {
 
     // PRIVATE FUNCTIONS
 
+    pub(crate) fn new() -> Stream<T> {
+        Stream {
+            pointer: Arc::new(Mutex::new(StreamImpl {
+                highest_id: 0_u16,
+                is_alive: true,
+                on_emit: BTreeMap::new(),
+                extra_fields: None,
+            })),
+        }
+    }
+
     pub(crate) fn new_with_fields<FieldsType>(fields: FieldsType) -> Stream<T>
     where
         FieldsType: 'static,
@@ -222,7 +233,7 @@ impl<T> Stream<T> {
                 highest_id: 0_u16,
                 is_alive: true,
                 on_emit: BTreeMap::new(),
-                extra_fields: Box::into_raw(Box::new(fields)),
+                extra_fields: Some(Box::new(fields)),
             })),
         }
     }
@@ -241,16 +252,13 @@ impl<T> Stream<T> {
         FnType: FnOnce(&ExtraFieldsType) -> RetType,
     {
         match self.pointer.lock() {
-            Ok(stream_impl) => unsafe {
-                let any_box = Box::from_raw(stream_impl.extra_fields);
-                match any_box.downcast::<ExtraFieldsType>() {
-                    Ok(fields) => {
-                        let ret = cb(&*fields);
-                        let _nofree = Box::into_raw(fields);
-                        ret
+            Ok(stream_impl) => {
+                if let Some(extra_field_box) = &stream_impl.extra_fields {
+                    if let Some(fields) = extra_field_box.downcast_ref::<ExtraFieldsType>() {
+                        return cb(&*fields);
                     }
-                    Err(_) => panic!("Invalid type for derived stream field."),
                 }
+                panic!("Invalid type for derived stream field.");
             },
             Err(err) => panic!("Stream mutex poisoned: {}", err),
         }
@@ -262,15 +270,13 @@ impl<T> Stream<T> {
         FnType: FnOnce(&mut ExtraFieldsType),
     {
         match self.pointer.lock() {
-            Ok(stream_impl) => unsafe {
-                let any_box = Box::from_raw(stream_impl.extra_fields);
-                match any_box.downcast::<ExtraFieldsType>() {
-                    Ok(mut fields) => {
-                        cb(&mut *fields);
-                        let _nofree = Box::into_raw(fields);
+            Ok(mut stream_impl) => {
+                if let Some(extra_field_box) = &mut stream_impl.extra_fields {
+                    if let Some(fields) = extra_field_box.downcast_mut::<ExtraFieldsType>() {
+                        return cb(&mut *fields);
                     }
-                    Err(_) => panic!("Invalid type for derived stream field."),
                 }
+                panic!("Invalid type for derived stream field.");
             },
             Err(err) => panic!("Stream mutex poisoned: {}", err),
         }
@@ -280,7 +286,7 @@ impl<T> Stream<T> {
 impl<T> Sink<T> {
     pub fn new() -> Sink<T> {
         Sink {
-            stream: Stream::new_with_fields(EmptyStruct {}),
+            stream: Stream::new(),
         }
     }
 
@@ -311,14 +317,6 @@ impl<T> Drop for Sink<T> {
             Err(err) => panic!("Stream mutex poisoned: {}", err),
         };
         stream_mut.is_alive = false;
-    }
-}
-
-impl<T> Drop for StreamImpl<T> {
-    fn drop(&mut self) {
-        unsafe {
-            let _extra_fields_box = Box::from_raw(self.extra_fields);
-        }
     }
 }
 
