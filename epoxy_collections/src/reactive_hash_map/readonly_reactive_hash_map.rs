@@ -1,10 +1,9 @@
-use super::super::base_collection::{
-    BaseReactiveCollection, ReadonlyReactiveCollectionInternal,
-    ReadonlyReactiveCollection
+use crate::base_collection::{
+    BaseReactiveCollection, ReadonlyReactiveCollection, ReadonlyReactiveCollectionInternal,
 };
-use super::super::mutations::Mutation::{Property, Subproperty};
-use super::super::mutations::Mutation;
-use super::super::reactive_container_item::ReactiveContainerItem;
+use crate::mutations::Mutation;
+use crate::mutations::Mutation::{Property, Subproperty};
+use crate::reactive_container_item::ReactiveContainerItem;
 use std::cmp::Eq;
 use std::collections::HashMap;
 use std::hash::Hash;
@@ -107,6 +106,32 @@ where
     ValueType: Send,
     ValueType: 'static,
 {
+    pub(super) fn new() -> ReadonlyReactiveHashMap<KeyType, ValueType> {
+        ReadonlyReactiveHashMap {
+            internal: Arc::new(ReadonlyReactiveHashMapInternal {
+                base: BaseReactiveCollection::new(HashMap::new()),
+            }),
+        }
+    }
+
+    pub(super) fn copy_of(
+        data: &HashMap<KeyType, ValueType>,
+    ) -> ReadonlyReactiveHashMap<KeyType, ValueType>
+    where
+        ValueType: Clone,
+    {
+        let mut copied_data: HashMap<KeyType, Arc<ValueType>> = HashMap::new();
+        for (key, value) in data {
+            copied_data.insert(key.clone(), Arc::new(value.clone()));
+        }
+
+        ReadonlyReactiveHashMap {
+            internal: Arc::new(ReadonlyReactiveHashMapInternal {
+                base: BaseReactiveCollection::new(copied_data),
+            }),
+        }
+    }
+
     /// Retrieves the value for a given key, if it exists. The value is returned as an Arc,
     /// so holding a reference to it does not hold a reference to the HashMap. The value can
     /// be deleted from the HashMap and the Arc will still exist.
@@ -151,23 +176,26 @@ where
     /// let hash_map: ReactiveHashMap<i8, i8> = ReactiveHashMap::new();
     /// let observer = hash_map.observe(&1);
     /// assert_eq!(*observer.get(), None);
-    /// 
+    ///
     /// let update_count = observer.as_stream().count_values().to_reactive_value();
     /// assert_eq!(*update_count.get(), 0);
-    /// 
+    ///
     /// hash_map.insert(1, 10);
     /// assert_eq!(*observer.get(), Some(Arc::new(10)));
     /// assert_eq!(*update_count.get(), 1);
-    /// 
+    ///
     /// hash_map.insert(1, 100);
     /// assert_eq!(*observer.get(), Some(Arc::new(100)));
     /// assert_eq!(*update_count.get(), 2);
-    /// 
+    ///
     /// hash_map.remove(1);
     /// assert_eq!(*observer.get(), None);
     /// assert_eq!(*update_count.get(), 3);
     /// ```
-    pub fn observe(&self, key: &KeyType) -> epoxy_streams::ReadonlyReactiveValue<Option<Arc<ValueType>>> {
+    pub fn observe(
+        &self,
+        key: &KeyType,
+    ) -> epoxy_streams::ReadonlyReactiveValue<Option<Arc<ValueType>>> {
         let filter_key = key.clone();
         let map_key = key.clone();
         let map_internal = self.internal.clone();
@@ -176,11 +204,11 @@ where
             .filter(move |mutation| match mutation {
                 Property(property_mutation) => {
                     property_mutation.key.downcast_ref::<KeyType>().unwrap() == &filter_key
-                },
+                }
                 Subproperty(subproperty_mutation) => {
                     subproperty_mutation.key.downcast_ref::<KeyType>().unwrap() == &filter_key
                 }
-                _ => panic!("Incompatible mutation type for ReactiveHashMap")
+                _ => panic!("Incompatible mutation type for ReactiveHashMap"),
             })
             .map(move |_mutation| map_internal.get(&map_key))
             .to_reactive_value_with_default(self.get(&key))
@@ -206,7 +234,7 @@ where
     /// pointer (in fact, it's using Arc behind the scenes).
     fn clone(&self) -> ReadonlyReactiveHashMap<KeyType, ValueType> {
         ReadonlyReactiveHashMap {
-            internal: self.internal.clone()
+            internal: self.internal.clone(),
         }
     }
 }

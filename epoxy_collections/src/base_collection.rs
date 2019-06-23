@@ -1,10 +1,12 @@
 use super::mutations::Mutation;
 use super::reactive_container_item::ReactiveContainerItem;
+use std::any::Any;
 use std::sync::{Arc, RwLock};
 
 pub struct BaseReactiveCollection<CollectionType> {
     pub(crate) collection: Box<RwLock<CollectionType>>,
     pub(crate) mutation_sink: epoxy_streams::Sink<Mutation>,
+    pub(crate) extra_fields: RwLock<Option<Box<dyn Any + Send + Sync + 'static>>>,
 }
 
 pub trait ReadonlyReactiveCollectionInternal {
@@ -34,6 +36,7 @@ impl<CollectionType> BaseReactiveCollection<CollectionType> {
         BaseReactiveCollection {
             collection: Box::new(RwLock::new(initial_collection)),
             mutation_sink: epoxy_streams::Sink::new(),
+            extra_fields: RwLock::new(None),
         }
     }
 }
@@ -77,7 +80,7 @@ impl<C, T> ReactiveContainerItem for T
 where
     T: ReactiveCollection<CollectionType = C>,
 {
-    fn get_mutation_stream(&self) -> Option<epoxy_streams::Stream<Mutation>> {
+    fn get_item_mutation_stream(&self) -> Option<epoxy_streams::Stream<Mutation>> {
         Some(T::get_mutation_stream(self))
     }
 

@@ -1,17 +1,17 @@
+use super::readonly_reactive_hash_map::ReadonlyReactiveHashMap;
 use crate::base_collection::{
-    BaseReactiveCollection, ReactiveCollectionInternal, ReadonlyReactiveCollectionInternal
+    ReactiveCollectionInternal, ReadonlyReactiveCollectionInternal,
 };
 use crate::mutations::Mutation::{Property, Subproperty};
 use crate::mutations::{Mutation, PropertyMutation, SubpropertyMutation};
 use crate::reactive_container_item::ReactiveContainerItem;
-use super::readonly_reactive_hash_map::{ReadonlyReactiveHashMapInternal, ReadonlyReactiveHashMap};
 use std::any::Any;
 use std::cmp::Eq;
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::sync::{Arc, RwLock};
 
-struct ReactiveHashMapInternal<KeyType, ValueType>
+pub(super) struct ReactiveHashMapInternal<KeyType, ValueType>
 where
     KeyType: Hash,
     KeyType: Eq,
@@ -24,7 +24,7 @@ where
     ValueType: Send,
     ValueType: 'static,
 {
-    map: ReadonlyReactiveHashMap<KeyType, ValueType>,
+    pub(super) map: ReadonlyReactiveHashMap<KeyType, ValueType>,
     subproperty_mutation_subscriptions:
         RwLock<HashMap<KeyType, epoxy_streams::Subscription<Mutation>>>,
     property_input_subscriptions: RwLock<HashMap<KeyType, epoxy_streams::Subscription<ValueType>>>,
@@ -43,7 +43,7 @@ where
     ValueType: Send,
     ValueType: 'static,
 {
-    internal: Arc<ReactiveHashMapInternal<KeyType, ValueType>>,
+    pub(super) internal: Arc<ReactiveHashMapInternal<KeyType, ValueType>>,
 }
 
 impl<KeyType, ValueType> ReadonlyReactiveCollectionInternal for ReactiveHashMap<KeyType, ValueType>
@@ -94,25 +94,7 @@ where
                 if let Some(value_box) = &mutation.new_value {
                     let local_value = value_box.clone();
                     let value = local_value.downcast::<ValueType>().unwrap();
-
-                    if let Some(stream) = value.get_mutation_stream() {
-                        let stream_key = key.clone();
-                        let subscription = stream
-                            .map_rc(move |mutation| {
-                                Arc::new(Mutation::Subproperty(SubpropertyMutation {
-                                    key: Box::new(stream_key.clone()),
-                                    mutation: mutation.clone(),
-                                }))
-                            })
-                            .pipe_into(self.get_mutation_sink());
-
-                        self.internal
-                            .subproperty_mutation_subscriptions
-                            .write()
-                            .unwrap()
-                            .insert(key.clone(), subscription);
-                    }
-
+                    self.subscribe_to_mutation_stream(&key, &value);
                     collection.insert(key, value);
                 } else {
                     self.internal
@@ -151,14 +133,78 @@ where
     pub fn new() -> ReactiveHashMap<KeyType, ValueType> {
         ReactiveHashMap {
             internal: Arc::new(ReactiveHashMapInternal {
-                map: ReadonlyReactiveHashMap {
-                    internal: Arc::new(ReadonlyReactiveHashMapInternal {
-                        base: BaseReactiveCollection::new(HashMap::new()),
-                    }),
-                },
+                map: ReadonlyReactiveHashMap::new(),
                 subproperty_mutation_subscriptions: RwLock::new(HashMap::new()),
                 property_input_subscriptions: RwLock::new(HashMap::new()),
             }),
+        }
+    }
+
+    /// Creates a new ReactiveHashMap by copying a non-reactive HashMap.
+    ///
+    /// # Examples
+    /// ```
+    /// use epoxy_collections::ReactiveHashMap;
+    /// use std::collections::HashMap;
+    ///
+    /// let mut static_data = HashMap::new();
+    /// static_data.insert(1, 2);
+    ///
+    /// let reactive_data = ReactiveHashMap::copy_of(&static_data);
+    /// assert_eq!(*reactive_data.get(&1).unwrap(), 2);
+    ///
+    /// static_data.insert(1, 10);
+    /// assert_eq!(*reactive_data.get(&1).unwrap(), 2);
+    ///
+    /// reactive_data.insert(1, 9);
+    /// assert_eq!(*reactive_data.get(&1).unwrap(), 9);
+    /// assert_eq!(static_data.get(&1).unwrap(), &10);
+    /// ```
+    pub fn copy_of(data: &HashMap<KeyType, ValueType>) -> ReactiveHashMap<KeyType, ValueType>
+    where
+        ValueType: Clone,
+    {
+        let ret = ReactiveHashMap::copy_of_internal(data);
+        for (key, value) in data {
+            ReactiveHashMap::subscribe_to_mutation_stream(&ret, key, value);
+        }
+        ret
+    }
+
+    /// Similar to copy_of but does not add subproperty mutation subscriptions. This function
+    /// is used internally for operators, where subproperty mutation subscriptions would be
+    /// redundant.
+    fn copy_of_internal(data: &HashMap<KeyType, ValueType>) -> ReactiveHashMap<KeyType, ValueType>
+    where
+        ValueType: Clone,
+    {
+        ReactiveHashMap {
+            internal: Arc::new(ReactiveHashMapInternal {
+                map: ReadonlyReactiveHashMap::copy_of(data),
+                subproperty_mutation_subscriptions: RwLock::new(HashMap::new()),
+                property_input_subscriptions: RwLock::new(HashMap::new()),
+            }),
+        }
+    }
+
+    /// Subscribes to mutations on a value, if necessary.
+    fn subscribe_to_mutation_stream(&self, key: &KeyType, value: &ValueType) {
+        if let Some(stream) = value.get_item_mutation_stream() {
+            let stream_key = key.clone();
+            let subscription = stream
+                .map_rc(move |mutation| {
+                    Arc::new(Mutation::Subproperty(SubpropertyMutation {
+                        key: Box::new(stream_key.clone()),
+                        mutation: mutation.clone(),
+                    }))
+                })
+                .pipe_into(self.get_mutation_sink());
+
+            self.internal
+                .subproperty_mutation_subscriptions
+                .write()
+                .unwrap()
+                .insert(key.clone(), subscription);
         }
     }
 
@@ -172,7 +218,7 @@ where
     ///
     /// let hash_map: ReactiveHashMap<i8, i8> = ReactiveHashMap::new();
     /// let readonly_hash_map = hash_map.as_readonly();
-    /// 
+    ///
     /// hash_map.insert(1, 10);
     /// assert_eq!(*readonly_hash_map.get(&1).unwrap(), 10);
     /// ```
@@ -224,24 +270,27 @@ where
     /// let hash_map: ReactiveHashMap<i8, i8> = ReactiveHashMap::new();
     /// let observer = hash_map.observe(&1);
     /// assert_eq!(*observer.get(), None);
-    /// 
+    ///
     /// let update_count = observer.as_stream().count_values().to_reactive_value();
     /// assert_eq!(*update_count.get(), 0);
-    /// 
+    ///
     /// hash_map.insert(1, 10);
     /// assert_eq!(*observer.get(), Some(Arc::new(10)));
     /// assert_eq!(*update_count.get(), 1);
-    /// 
+    ///
     /// hash_map.insert(1, 100);
     /// assert_eq!(*observer.get(), Some(Arc::new(100)));
     /// assert_eq!(*update_count.get(), 2);
-    /// 
+    ///
     /// hash_map.remove(1);
     /// assert_eq!(*observer.get(), None);
     /// assert_eq!(*update_count.get(), 3);
     /// ```
-    pub fn observe(&self, key: &KeyType) -> epoxy_streams::ReadonlyReactiveValue<Option<Arc<ValueType>>> {
-       self.internal.map.observe(key)
+    pub fn observe(
+        &self,
+        key: &KeyType,
+    ) -> epoxy_streams::ReadonlyReactiveValue<Option<Arc<ValueType>>> {
+        self.internal.map.observe(key)
     }
 
     fn get_dynamic(&self, key: &KeyType) -> Option<Arc<dyn Any + Send + Sync>> {
@@ -268,13 +317,11 @@ where
         let old_value = self.get(&key);
         match old_value {
             Some(old_value_arc) => {
-                self.write_mutations(vec![Arc::new(Mutation::Property(
-                    PropertyMutation {
-                        key: Box::new(key),
-                        old_value: Some(old_value_arc.clone()),
-                        new_value: None,
-                    },
-                ))]);
+                self.write_mutations(vec![Arc::new(Mutation::Property(PropertyMutation {
+                    key: Box::new(key),
+                    old_value: Some(old_value_arc.clone()),
+                    new_value: None,
+                }))]);
                 Some(old_value_arc)
             }
             None => None,
@@ -353,13 +400,13 @@ where
     /// let reactive_value: WriteableReactiveValue<i8> = ReactiveValue::new(1);
     /// hash_map.insert_reactive_value(1, &reactive_value);
     /// assert_eq!(hash_map.get(&1), Some(Arc::new(1)));
-    /// 
+    ///
     /// reactive_value.set(12);
     /// assert_eq!(hash_map.get(&1), Some(Arc::new(12)));
-    /// 
+    ///
     /// hash_map.insert(1, 0);
     /// assert_eq!(hash_map.get(&1), Some(Arc::new(0)));
-    /// 
+    ///
     /// reactive_value.set(90);
     /// assert_eq!(hash_map.get(&1), Some(Arc::new(0)));
     /// ```
@@ -386,15 +433,15 @@ where
     /// let hash_map: ReactiveHashMap<i8, i8> = ReactiveHashMap::new();
     /// let sink: Sink<i8> = Sink::new();
     /// hash_map.insert_stream(1, sink.get_stream());
-    /// 
+    ///
     /// assert_eq!(hash_map.get(&1), None);
-    /// 
+    ///
     /// sink.emit(9);
     /// assert_eq!(hash_map.get(&1), Some(Arc::new(9)));
-    /// 
+    ///
     /// hash_map.remove(1);
     /// assert_eq!(hash_map.get(&1), None);
-    /// 
+    ///
     /// sink.emit(90);
     /// assert_eq!(hash_map.get(&1), None);
     /// ```
@@ -412,16 +459,14 @@ where
 
     fn insert_rc_internal(&self, key: KeyType, value: Arc<ValueType>) {
         let old_value = self.get_dynamic(&key);
-        self.write_mutations(vec![Arc::new(Mutation::Property(
-            PropertyMutation {
-                key: Box::new(key),
-                old_value: old_value,
-                new_value: Some(value),
-            },
-        ))]);
+        self.write_mutations(vec![Arc::new(Mutation::Property(PropertyMutation {
+            key: Box::new(key),
+            old_value: old_value,
+            new_value: Some(value),
+        }))]);
     }
 
-    fn clone_internal(&self) -> ReactiveHashMap<KeyType, ValueType> {
+    pub(super) fn clone_internal(&self) -> ReactiveHashMap<KeyType, ValueType> {
         ReactiveHashMap {
             internal: self.internal.clone(),
         }

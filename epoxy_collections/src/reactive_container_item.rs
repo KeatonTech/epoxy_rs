@@ -2,14 +2,14 @@ use super::mutations::Mutation;
 use std::sync::Arc;
 
 pub trait ReactiveContainerItem {
-    fn get_mutation_stream(&self) -> Option<epoxy_streams::Stream<Mutation>>;
+    fn get_item_mutation_stream(&self) -> Option<epoxy_streams::Stream<Mutation>>;
     fn write_mutations(&self, mutations: Vec<Arc<Mutation>>);
 }
 
 macro_rules! no_op_container_item_for_immutable_type {
     ($type:ty) => {
         impl ReactiveContainerItem for $type {
-            fn get_mutation_stream(&self) -> Option<epoxy_streams::Stream<Mutation>> {
+            fn get_item_mutation_stream(&self) -> Option<epoxy_streams::Stream<Mutation>> {
                 None
             }
 
