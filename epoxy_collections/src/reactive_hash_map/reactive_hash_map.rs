@@ -1,7 +1,5 @@
 use super::readonly_reactive_hash_map::ReadonlyReactiveHashMap;
-use crate::base_collection::{
-    ReactiveCollectionInternal, ReadonlyReactiveCollectionInternal,
-};
+use crate::base_collection::{ReactiveCollectionInternal, ReadonlyReactiveCollectionInternal};
 use crate::mutations::Mutation::{Property, Subproperty};
 use crate::mutations::{Mutation, PropertyMutation, SubpropertyMutation};
 use crate::reactive_container_item::ReactiveContainerItem;
