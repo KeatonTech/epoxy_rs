@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 pub trait ReactiveContainerItem {
     fn get_mutation_stream(&self) -> Option<epoxy_streams::Stream<Mutation>>;
-    fn write_mutations(&self, mutations: Box<Iterator<Item = Arc<Mutation>>>);
+    fn write_mutations(&self, mutations: Vec<Arc<Mutation>>);
 }
 
 macro_rules! no_op_container_item_for_immutable_type {
@@ -13,7 +13,7 @@ macro_rules! no_op_container_item_for_immutable_type {
                 None
             }
 
-            fn write_mutations(&self, _mutations: Box<Iterator<Item = Arc<Mutation>>>) {
+            fn write_mutations(&self, _mutations: Vec<Arc<Mutation>>) {
                 panic!("Attempted to mutate a primitive child of a reactive data structure")
             }
         }

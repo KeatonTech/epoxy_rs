@@ -26,7 +26,7 @@ pub trait ReadonlyReactiveCollection {
 }
 
 pub trait ReactiveCollection: ReadonlyReactiveCollection {
-    fn write_mutations(&self, mutations: Box<Iterator<Item = Arc<Mutation>>>);
+    fn write_mutations(&self, mutations: Vec<Arc<Mutation>>);
 }
 
 impl<CollectionType> BaseReactiveCollection<CollectionType> {
@@ -59,11 +59,15 @@ impl<CollectionType, T: ReactiveCollectionInternal<CollectionType = CollectionTy
 where
     CollectionType: Clone,
 {
-    fn write_mutations(&self, mutations: Box<Iterator<Item = Arc<Mutation>>>) {
+    fn write_mutations(&self, mutations: Vec<Arc<Mutation>>) {
         let collection_lock = self.get_collection();
-        let mut collection_value = collection_lock.write().unwrap();
+        {
+            let mut collection_value = collection_lock.write().unwrap();
+            for mutation in &mutations {
+                self.apply_mutation(&mut *collection_value, &mutation);
+            }
+        }
         for mutation in mutations {
-            self.apply_mutation(&mut *collection_value, &mutation);
             self.get_mutation_sink().emit_rc(mutation);
         }
     }
@@ -77,7 +81,7 @@ where
         Some(T::get_mutation_stream(self))
     }
 
-    fn write_mutations(&self, mutations: Box<Iterator<Item = Arc<Mutation>>>) {
+    fn write_mutations(&self, mutations: Vec<Arc<Mutation>>) {
         T::write_mutations(self, mutations)
     }
 }
