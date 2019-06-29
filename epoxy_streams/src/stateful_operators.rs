@@ -158,4 +158,71 @@ impl<T: 'static> Stream<T> {
             vec![],
         )
     }
+
+    /// Creates a stream that filters out repeated values. So a stream that emits
+    /// the sequence (1, 1, 2, 3) would be transformed into a stream that emits
+    /// (1, 2, 3). Note that this does _not_ dedup the entire stream, it just prevents
+    /// the same value from being emitted twice in a row. So (1, 1, 2, 1, 3) would
+    /// turn into (1, 2, 1, 3), not (1, 2, 3).
+    /// 
+    /// # Examples
+    /// ```
+    /// use std::sync::{Arc, Mutex};
+    ///
+    /// let stream_host: epoxy_streams::Sink<i32> = epoxy_streams::Sink::new();
+    /// let stream = stream_host.get_stream();
+    /// let deduped = stream.dedup_neighbors();
+    /// let cache = epoxy_streams::ReactiveCache::from_stream(deduped);
+    ///
+    /// stream_host.emit(2);
+    /// assert_eq!(cache.get_cloned(), vec![2]);
+    ///
+    /// stream_host.emit(2);
+    /// assert_eq!(cache.get_cloned(), vec![2]);
+    ///
+    /// stream_host.emit(3);
+    /// assert_eq!(cache.get_cloned(), vec![2, 3]);
+    /// ```
+    pub fn dedup_neighbors(&self) -> Stream<T> where 
+        T: Send,
+        T: Sync,
+        T: Eq
+    {
+        let derived_stream = Stream::new_with_fields::<StatefulDerivedStreamFields<T, Option<Arc<T>>>>(
+            StatefulDerivedStreamFields {
+                state: None,
+                subscription: None,
+            },
+        );
+        let subscription_stream_ref = derived_stream.clone();
+
+        let subscription = self.subscribe(move |val| {
+            let is_duplicate = subscription_stream_ref.read_extra_fields(
+                |fields: &StatefulDerivedStreamFields<T, Option<Arc<T>>>| {
+                   if let Some(last_val) = &fields.state {
+                       last_val == &val
+                   } else {
+                       false
+                   }
+                }
+            );
+
+            if !is_duplicate {
+                subscription_stream_ref.mutate_extra_fields(
+                    |fields: &mut StatefulDerivedStreamFields<T, Option<Arc<T>>>| {
+                        fields.state = Some(val.clone());
+                    }
+                );
+                subscription_stream_ref.emit_rc(val);
+            }
+        });
+
+        derived_stream.mutate_extra_fields(
+            move |fields: &mut StatefulDerivedStreamFields<T, Option<Arc<T>>>| {
+                fields.subscription = Some(subscription);
+            },
+        );
+
+        derived_stream
+    }
 }

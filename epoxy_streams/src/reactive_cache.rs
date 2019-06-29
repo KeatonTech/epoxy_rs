@@ -95,6 +95,12 @@ impl<T: Send + Sync + 'static> ReactiveCache<T> {
         self.cache.read().unwrap()
     }
 
+    /// Similar to `get()`, but pulls all of the values out of their Arc containers, for easier
+    /// testing and referencing.
+    pub fn get_cloned(&self) -> VecDeque<T> where T: Clone  {
+        self.get().iter().map(|val| (**val).clone()).collect()
+    }
+
     /// Removes all values from the queue, freeing memory.
     pub fn clear(&self) {
         self.cache.write().unwrap().clear()
