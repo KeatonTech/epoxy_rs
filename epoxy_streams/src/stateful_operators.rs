@@ -171,8 +171,8 @@ impl<T: 'static> Stream<T> {
     ///
     /// let stream_host: epoxy_streams::Sink<i32> = epoxy_streams::Sink::new();
     /// let stream = stream_host.get_stream();
-    /// let deduped = stream.dedup_neighbors();
-    /// let cache = epoxy_streams::ReactiveCache::from_stream(deduped);
+    /// let distinct = stream.distinct_until_changed();
+    /// let cache = epoxy_streams::ReactiveCache::from_stream(distinct);
     ///
     /// stream_host.emit(2);
     /// assert_eq!(cache.get_cloned(), vec![2]);
@@ -183,7 +183,7 @@ impl<T: 'static> Stream<T> {
     /// stream_host.emit(3);
     /// assert_eq!(cache.get_cloned(), vec![2, 3]);
     /// ```
-    pub fn dedup_neighbors(&self) -> Stream<T> where 
+    pub fn distinct_until_changed(&self) -> Stream<T> where 
         T: Send,
         T: Sync,
         T: Eq

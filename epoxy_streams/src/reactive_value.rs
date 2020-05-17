@@ -188,7 +188,7 @@ impl<T: 'static + Send + Sync> WriteableReactiveValue<T> {
 
 // CONSTRUCTORS
 
-impl<T: 'static + Send + Sync> ReactiveValue<T> {
+impl<T: 'static + Send + Sync> dyn ReactiveValue<T> {
     /// Creates a new writeable reactive value.
     ///
     /// Note: Use `new_rc` if your default value is already an Arc, as this will

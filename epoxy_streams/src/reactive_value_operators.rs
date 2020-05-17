@@ -1,7 +1,7 @@
 use super::{ReactiveValue, ReadonlyReactiveValue};
 use std::sync::Arc;
 
-impl<T: 'static + Send + Sync> ReactiveValue<T> {
+impl<T: 'static + Send + Sync> dyn ReactiveValue<T> {
     /// Returns a ReactiveValue that only changes when the content of the original ReactiveValue
     /// passes a test (specified by `filter_function`). The output ReactiveValue will be equal
     /// to `default_value` until the original ReactiveValue passes the test.
@@ -27,7 +27,7 @@ impl<T: 'static + Send + Sync> ReactiveValue<T> {
     /// assert_eq!(*only_even.get(), 4);
     /// ```
     pub fn sanitize<F>(
-        value: &ReactiveValue<T>,
+        value: &dyn ReactiveValue<T>,
         filter_function: F,
         default_value: T,
     ) -> ReadonlyReactiveValue<T>
@@ -63,7 +63,7 @@ impl<T: 'static + Send + Sync> ReactiveValue<T> {
     /// assert_eq!(*only_even.get(), 4);
     /// ```
     pub fn fallback<F>(
-        value: &ReactiveValue<T>,
+        value: &dyn ReactiveValue<T>,
         filter_function: F,
         fallback_value: T,
     ) -> ReadonlyReactiveValue<T>
@@ -105,7 +105,7 @@ impl<T: 'static + Send + Sync> ReactiveValue<T> {
     /// assert_eq!(*thing_that_is_cool.get(), "Cheese is cool");
     ///
     /// ```
-    pub fn map<U, F>(value: &ReactiveValue<T>, map_function: F) -> ReadonlyReactiveValue<U>
+    pub fn map<U, F>(value: &dyn ReactiveValue<T>, map_function: F) -> ReadonlyReactiveValue<U>
     where
         U: 'static,
         U: Send,

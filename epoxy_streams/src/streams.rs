@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex};
 pub(crate) struct StreamImpl<T> {
     highest_id: u16,
     is_alive: bool,
-    on_emit: BTreeMap<u16, Box<Fn(Arc<T>) + Send + Sync>>,
+    on_emit: BTreeMap<u16, Box<dyn Fn(Arc<T>) + Send + Sync>>,
     pub(crate) extra_fields: Option<Box<dyn Any + Send + Sync + 'static>>,
 }
 
